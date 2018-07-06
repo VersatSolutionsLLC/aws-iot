@@ -608,7 +608,7 @@ error_unpack:
 /**
  */
 //--------------------------------------------------------------------------------------------------
-int32_t radio_Temparature
+int32_t radio_Temperature
 (
     void
 )
@@ -629,7 +629,7 @@ int32_t radio_Temparature
     // Create a new message object and get the message buffer
     _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_radio_Temparature;
+    _msgPtr->id = _MSGID_radio_Temperature;
     _msgBufPtr = _msgPtr->buffer;
     _msgBufSize = _MAX_MSG_SIZE;
 

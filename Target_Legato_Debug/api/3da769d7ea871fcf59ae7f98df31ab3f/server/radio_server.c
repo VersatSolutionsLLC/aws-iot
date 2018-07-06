@@ -352,7 +352,7 @@ static void Handle_radio_Signal
 }
 
 
-static void Handle_radio_Temparature
+static void Handle_radio_Temperature
 (
     le_msg_MessageRef_t _msgRef
 
@@ -374,7 +374,7 @@ static void Handle_radio_Temparature
 
     // Call the function
     int32_t _result;
-    _result  = radio_Temparature (  );
+    _result  = radio_Temperature (  );
 
     // Re-use the message buffer for the response
     _msgBufPtr = _msgBufStartPtr;
@@ -415,7 +415,7 @@ static void ServerMsgRecvHandler
     switch (msgPtr->id)
     {
         case _MSGID_radio_Signal : Handle_radio_Signal(msgRef); break;
-        case _MSGID_radio_Temparature : Handle_radio_Temparature(msgRef); break;
+        case _MSGID_radio_Temperature : Handle_radio_Temperature(msgRef); break;
 
         default: LE_ERROR("Unknowm msg id = %i", msgPtr->id);
     }

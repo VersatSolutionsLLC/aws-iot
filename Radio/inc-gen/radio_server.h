@@ -64,7 +64,7 @@ int32_t radio_Signal
 /**
  */
 //--------------------------------------------------------------------------------------------------
-int32_t radio_Temparature
+int32_t radio_Temperature
 (
     void
 );

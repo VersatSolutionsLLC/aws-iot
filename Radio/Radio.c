@@ -29,7 +29,7 @@ int32_t radio_Signal() {
 
 }
 
-int32_t radio_Temparature(){
+int32_t radio_Temperature(){
     le_result_t   res;
     const char *sensorName = "POWER_CONTROLLER";
     le_temp_SensorRef_t sensorRef = le_temp_Request	(sensorName);

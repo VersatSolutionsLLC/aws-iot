@@ -146,6 +146,16 @@ COMPONENT_INIT
 	temperatureHandler.dataLength = sizeof(float);
 	temperatureHandler.type = SHADOW_JSON_FLOAT;
 
+	jsonStruct_t timestampHandler;
+
+	u_int32_t timestamp;
+	timestampHandler.cb = NULL;
+	timestampHandler.pKey = "timestamp";
+	timestampHandler.pData = &timestamp;
+	timestampHandler.dataLength = sizeof(u_int32_t);
+	timestampHandler.type = SHADOW_JSON_UINT32;
+
+
 	char rootCA[PATH_MAX + 1];
 	char clientCRT[PATH_MAX + 1];
 	char clientKey[PATH_MAX + 1];
@@ -211,9 +221,9 @@ COMPONENT_INIT
 	if(SUCCESS != rc) {
 		IOT_ERROR("Shadow Register Delta Error");
 	}
-	temperature = radio_Temparature();
+	temperature = radio_Temperature();
 	signal = radio_Signal();
-
+	timestamp = (unsigned)time(NULL);
 	// loop and publish a change in temperature
 	while(NETWORK_ATTEMPTING_RECONNECT == rc || NETWORK_RECONNECTED == rc || SUCCESS == rc) {
 		rc = aws_iot_shadow_yield(&mqttClient, 200);
@@ -225,12 +235,14 @@ COMPONENT_INIT
 		IOT_INFO("\n=======================================================================================\n");
 		IOT_INFO("On Device: Signal Strength %d", signal);
 		//simulateRoomTemperature(&temperature);
-		temperature = radio_Temparature();
+		temperature = radio_Temperature();
 		signal = radio_Signal();
+		timestamp = (unsigned)time(NULL);
+		LE_INFO("Timestamp: %d", timestamp);
 		rc = aws_iot_shadow_init_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
 		if(SUCCESS == rc) {
-			rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 2, &temperatureHandler,
-											 &windowActuator);
+			rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 3, &temperatureHandler,
+											 &windowActuator, &timestampHandler);
 			if(SUCCESS == rc) {
 				rc = aws_iot_finalize_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
 				if(SUCCESS == rc) {

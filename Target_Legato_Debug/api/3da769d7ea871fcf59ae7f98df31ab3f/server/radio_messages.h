@@ -15,7 +15,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "9950888954ed8e88ef4bb882dcb705a3"
+#define PROTOCOL_ID_STR "821c4d71474ca572f18812d05230ace9"
 
 #ifdef MK_TOOLS_BUILD
     extern const char** radio_ServiceInstanceNamePtr;
@@ -36,7 +36,7 @@ typedef struct __attribute__((packed))
 _Message_t;
 
 #define _MSGID_radio_Signal 0
-#define _MSGID_radio_Temparature 1
+#define _MSGID_radio_Temperature 1
 
 
 #endif // RADIO_MESSAGES_H_INCLUDE_GUARD
