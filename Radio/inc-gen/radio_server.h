@@ -10,8 +10,8 @@
  */
 
 
-#ifndef PRINTER_INTERFACE_H_INCLUDE_GUARD
-#define PRINTER_INTERFACE_H_INCLUDE_GUARD
+#ifndef RADIO_INTERFACE_H_INCLUDE_GUARD
+#define RADIO_INTERFACE_H_INCLUDE_GUARD
 
 
 #include "legato.h"
@@ -22,7 +22,7 @@
  * Get the server service reference
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_ServiceRef_t printer_GetServiceRef
+le_msg_ServiceRef_t radio_GetServiceRef
 (
     void
 );
@@ -32,7 +32,7 @@ le_msg_ServiceRef_t printer_GetServiceRef
  * Get the client session reference for the current message
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t printer_GetClientSessionRef
+le_msg_SessionRef_t radio_GetClientSessionRef
 (
     void
 );
@@ -42,7 +42,7 @@ le_msg_SessionRef_t printer_GetClientSessionRef
  * Initialize the server and advertise the service.
  */
 //--------------------------------------------------------------------------------------------------
-void printer_AdvertiseService
+void radio_AdvertiseService
 (
     void
 );
@@ -53,10 +53,21 @@ void printer_AdvertiseService
 /**
  */
 //--------------------------------------------------------------------------------------------------
-void printer_Print
+int32_t radio_Signal
 (
     void
 );
 
 
-#endif // PRINTER_INTERFACE_H_INCLUDE_GUARD
+
+//--------------------------------------------------------------------------------------------------
+/**
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t radio_Temparature
+(
+    void
+);
+
+
+#endif // RADIO_INTERFACE_H_INCLUDE_GUARD

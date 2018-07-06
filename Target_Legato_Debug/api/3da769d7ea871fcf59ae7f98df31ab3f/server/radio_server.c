@@ -9,8 +9,8 @@
  */
 
 
-#include "printer_messages.h"
-#include "printer_server.h"
+#include "radio_messages.h"
+#include "radio_server.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -240,7 +240,7 @@ __attribute__((unused)) static void SendMsgToClient
  * Get the server service reference
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_ServiceRef_t printer_GetServiceRef
+le_msg_ServiceRef_t radio_GetServiceRef
 (
     void
 )
@@ -254,7 +254,7 @@ le_msg_ServiceRef_t printer_GetServiceRef
  * Get the client session reference for the current message
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t printer_GetClientSessionRef
+le_msg_SessionRef_t radio_GetClientSessionRef
 (
     void
 )
@@ -268,7 +268,7 @@ le_msg_SessionRef_t printer_GetClientSessionRef
  * Initialize the server and advertise the service.
  */
 //--------------------------------------------------------------------------------------------------
-void printer_AdvertiseService
+void radio_AdvertiseService
 (
     void
 )
@@ -281,12 +281,12 @@ void printer_AdvertiseService
     le_msg_ProtocolRef_t protocolRef;
 
     // Create the server data pool
-    _ServerDataPool = le_mem_CreatePool("printer_ServerData", sizeof(_ServerData_t));
+    _ServerDataPool = le_mem_CreatePool("radio_ServerData", sizeof(_ServerData_t));
 
     // Create safe reference map for handler references.
     // The size of the map should be based on the number of handlers defined for the server.
     // Don't expect that to be more than 2-3, so use 3 as a reasonable guess.
-    _HandlerRefMap = le_ref_CreateMap("printer_ServerHandlers", 3);
+    _HandlerRefMap = le_ref_CreateMap("radio_ServerHandlers", 3);
 
     // Start the server side of the service
     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID_STR, sizeof(_Message_t));
@@ -307,7 +307,7 @@ void printer_AdvertiseService
 //--------------------------------------------------------------------------------------------------
 
 
-static void Handle_printer_Print
+static void Handle_radio_Signal
 (
     le_msg_MessageRef_t _msgRef
 
@@ -328,11 +328,60 @@ static void Handle_printer_Print
     // Define storage for output parameters
 
     // Call the function
-    printer_Print (  );
+    int32_t _result;
+    _result  = radio_Signal (  );
 
     // Re-use the message buffer for the response
     _msgBufPtr = _msgBufStartPtr;
     _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack the result first
+    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize, _result ));
+
+    // Pack any "out" parameters
+
+    // Return the response
+    TRACE("Sending response to client session %p : %ti bytes sent",
+          le_msg_GetSession(_msgRef),
+          _msgBufPtr-_msgBufStartPtr);
+
+
+    le_msg_Respond(_msgRef);
+
+    return;
+}
+
+
+static void Handle_radio_Temparature
+(
+    le_msg_MessageRef_t _msgRef
+
+)
+{
+    // Get the message buffer pointer
+    __attribute__((unused)) uint8_t* _msgBufPtr =
+        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
+
+    // Needed if we are returning a result or output values
+    uint8_t* _msgBufStartPtr = _msgBufPtr;
+
+    // Unpack which outputs are needed
+
+    // Unpack the input parameters from the message
+
+    // Define storage for output parameters
+
+    // Call the function
+    int32_t _result;
+    _result  = radio_Temparature (  );
+
+    // Re-use the message buffer for the response
+    _msgBufPtr = _msgBufStartPtr;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack the result first
+    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize, _result ));
 
     // Pack any "out" parameters
 
@@ -365,7 +414,8 @@ static void ServerMsgRecvHandler
     // Dispatch to appropriate message handler and get response
     switch (msgPtr->id)
     {
-        case _MSGID_printer_Print : Handle_printer_Print(msgRef); break;
+        case _MSGID_radio_Signal : Handle_radio_Signal(msgRef); break;
+        case _MSGID_radio_Temparature : Handle_radio_Temparature(msgRef); break;
 
         default: LE_ERROR("Unknowm msg id = %i", msgPtr->id);
     }

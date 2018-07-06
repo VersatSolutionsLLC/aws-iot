@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include "api/3da769d7ea871fcf59ae7f98df31ab3f/client/printer_interface.h"
+#include "api/3da769d7ea871fcf59ae7f98df31ab3f/client/radio_interface.h"
 
 #ifdef __cplusplus
 }

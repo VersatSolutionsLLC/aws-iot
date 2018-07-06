@@ -8,8 +8,8 @@
  */
 
 
-#include "printer_messages.h"
-#include "printer_interface.h"
+#include "radio_messages.h"
+#include "radio_interface.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ typedef struct
 {
     le_msg_SessionRef_t sessionRef;     ///< Client Session Reference
     int                 clientCount;    ///< Number of clients sharing this thread
-    printer_DisconnectHandler_t disconnectHandler; ///< Disconnect handler for this thread
+    radio_DisconnectHandler_t disconnectHandler; ///< Disconnect handler for this thread
     void*               contextPtr;     ///< Context for disconnect handler
 }
 _ClientThreadData_t;
@@ -269,7 +269,7 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
 
     // If the thread specific data is NULL, then the session ref has not been created.
     LE_FATAL_IF(clientThreadPtr==NULL,
-                "printer_ConnectService() not called for current thread");
+                "radio_ConnectService() not called for current thread");
 
     return clientThreadPtr->sessionRef;
 }
@@ -283,10 +283,10 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
 static void InitCommonData(void)
 {
     // Allocate the client data pool
-    _ClientDataPool = le_mem_CreatePool("printer_ClientData", sizeof(_ClientData_t));
+    _ClientDataPool = le_mem_CreatePool("radio_ClientData", sizeof(_ClientData_t));
 
     // Allocate the client thread pool
-    _ClientThreadDataPool = le_mem_CreatePool("printer_ClientThreadData", sizeof(_ClientThreadData_t));
+    _ClientThreadDataPool = le_mem_CreatePool("radio_ClientThreadData", sizeof(_ClientThreadData_t));
 
     // Create the thread-local data key to be used to store a pointer to each thread object.
     LE_ASSERT(pthread_key_create(&_ThreadDataKey, NULL) == 0);
@@ -295,7 +295,7 @@ static void InitCommonData(void)
     // The size of the map should be based on the number of handlers defined multiplied by
     // the number of client threads.  Since this number can't be completely determined at
     // build time, just make a reasonable guess.
-    _HandlerRefMap = le_ref_CreateMap("printer_ClientHandlers", 5);
+    _HandlerRefMap = le_ref_CreateMap("radio_ClientHandlers", 5);
 }
 
 
@@ -369,7 +369,7 @@ static le_result_t DoConnectService
  * This function is created automatically.
  */
 //--------------------------------------------------------------------------------------------------
-void printer_ConnectService
+void radio_ConnectService
 (
     void
 )
@@ -398,7 +398,7 @@ void printer_ConnectService
  *  - LE_COMM_ERROR if the Service Directory cannot be reached.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t printer_TryConnectService
+le_result_t radio_TryConnectService
 (
     void
 )
@@ -437,7 +437,7 @@ static void SessionCloseHandler
         clientThreadPtr->disconnectHandler(clientThreadPtr->contextPtr);
     }
 
-    LE_FATAL("Component for printer disconnected\n");
+    LE_FATAL("Component for radio disconnected\n");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -448,9 +448,9 @@ static void SessionCloseHandler
  * to continue without exiting, it should call longjmp() from inside the handler.
  */
 //--------------------------------------------------------------------------------------------------
-void printer_SetServerDisconnectHandler
+void radio_SetServerDisconnectHandler
 (
-    printer_DisconnectHandler_t disconnectHandler,
+    radio_DisconnectHandler_t disconnectHandler,
     void *contextPtr
 )
 {
@@ -487,7 +487,7 @@ void printer_SetServerDisconnectHandler
  * This function is created automatically.
  */
 //--------------------------------------------------------------------------------------------------
-void printer_DisconnectService
+void radio_DisconnectService
 (
     void
 )
@@ -538,7 +538,7 @@ void printer_DisconnectService
 /**
  */
 //--------------------------------------------------------------------------------------------------
-void printer_Print
+int32_t radio_Signal
 (
     void
 )
@@ -551,13 +551,15 @@ void printer_Print
     __attribute__((unused)) uint8_t* _msgBufPtr;
     __attribute__((unused)) size_t _msgBufSize;
 
+    int32_t _result;
+
     // Range check values, if appropriate
 
 
     // Create a new message object and get the message buffer
     _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_printer_Print;
+    _msgPtr->id = _MSGID_radio_Signal;
     _msgBufPtr = _msgPtr->buffer;
     _msgBufSize = _MAX_MSG_SIZE;
 
@@ -582,13 +584,93 @@ void printer_Print
     _msgBufPtr = _msgPtr->buffer;
     _msgBufSize = _MAX_MSG_SIZE;
 
+    // Unpack the result first
+    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
     // Unpack any "out" parameters
 
 
     // Release the message object, now that all results/output has been copied.
     le_msg_ReleaseMsg(_responseMsgRef);
 
-    return;
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t radio_Temparature
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    int32_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_radio_Temparature;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
 }
 
 

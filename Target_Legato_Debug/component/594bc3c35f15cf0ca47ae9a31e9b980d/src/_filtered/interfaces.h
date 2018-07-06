@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include "printer_interface.h"
+#include "radio_interface.h"
 
 #ifdef __cplusplus
 }

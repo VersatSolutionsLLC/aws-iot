@@ -13,7 +13,7 @@ extern "C" {
 
 #include "le_mrc_interface.h"
 #include "le_temp_interface.h"
-#include "printer_server.h"
+#include "radio_server.h"
 
 #ifdef __cplusplus
 }

@@ -9,7 +9,7 @@
 
 
 // Define IPC API interface names.
-LE_SHARED const char* _AwsComponent_printer_ServiceInstanceName = "awslegatotest.AwsComponent.printer";
+LE_SHARED const char* _AwsComponent_radio_ServiceInstanceName = "awslegatotest.AwsComponent.radio";
 
 // Define default component's log session variables.
 LE_SHARED le_log_SessionRef_t awslegatotest_exe_LogSession;

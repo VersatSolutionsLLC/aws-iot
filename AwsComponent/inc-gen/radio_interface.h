@@ -10,8 +10,8 @@
  */
 
 
-#ifndef PRINTER_INTERFACE_H_INCLUDE_GUARD
-#define PRINTER_INTERFACE_H_INCLUDE_GUARD
+#ifndef RADIO_INTERFACE_H_INCLUDE_GUARD
+#define RADIO_INTERFACE_H_INCLUDE_GUARD
 
 
 #include "legato.h"
@@ -22,7 +22,7 @@
  * Type for handler called when a server disconnects.
  */
 //--------------------------------------------------------------------------------------------------
-typedef void (*printer_DisconnectHandler_t)(void *);
+typedef void (*radio_DisconnectHandler_t)(void *);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -37,7 +37,7 @@ typedef void (*printer_DisconnectHandler_t)(void *);
  * This function is created automatically.
  */
 //--------------------------------------------------------------------------------------------------
-void printer_ConnectService
+void radio_ConnectService
 (
     void
 );
@@ -62,7 +62,7 @@ void printer_ConnectService
  *  - LE_COMM_ERROR if the Service Directory cannot be reached.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t printer_TryConnectService
+le_result_t radio_TryConnectService
 (
     void
 );
@@ -75,9 +75,9 @@ le_result_t printer_TryConnectService
  * to continue without exiting, it should call longjmp() from inside the handler.
  */
 //--------------------------------------------------------------------------------------------------
-void printer_SetServerDisconnectHandler
+void radio_SetServerDisconnectHandler
 (
-    printer_DisconnectHandler_t disconnectHandler,
+    radio_DisconnectHandler_t disconnectHandler,
     void *contextPtr
 );
 
@@ -93,7 +93,7 @@ void printer_SetServerDisconnectHandler
  * This function is created automatically.
  */
 //--------------------------------------------------------------------------------------------------
-void printer_DisconnectService
+void radio_DisconnectService
 (
     void
 );
@@ -103,9 +103,18 @@ void printer_DisconnectService
 /**
  */
 //--------------------------------------------------------------------------------------------------
-void printer_Print
+int32_t radio_Signal
 (
     void
 );
 
-#endif // PRINTER_INTERFACE_H_INCLUDE_GUARD
+//--------------------------------------------------------------------------------------------------
+/**
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t radio_Temparature
+(
+    void
+);
+
+#endif // RADIO_INTERFACE_H_INCLUDE_GUARD

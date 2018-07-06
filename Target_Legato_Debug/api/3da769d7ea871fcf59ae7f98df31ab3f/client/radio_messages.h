@@ -9,23 +9,23 @@
  */
 
 
-#ifndef PRINTER_MESSAGES_H_INCLUDE_GUARD
-#define PRINTER_MESSAGES_H_INCLUDE_GUARD
+#ifndef RADIO_MESSAGES_H_INCLUDE_GUARD
+#define RADIO_MESSAGES_H_INCLUDE_GUARD
 
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "2911d68f18abb927d8a931f619072940"
+#define PROTOCOL_ID_STR "9950888954ed8e88ef4bb882dcb705a3"
 
 #ifdef MK_TOOLS_BUILD
-    extern const char** printer_ServiceInstanceNamePtr;
-    #define SERVICE_INSTANCE_NAME (*printer_ServiceInstanceNamePtr)
+    extern const char** radio_ServiceInstanceNamePtr;
+    #define SERVICE_INSTANCE_NAME (*radio_ServiceInstanceNamePtr)
 #else
     #define SERVICE_INSTANCE_NAME "printer"
 #endif
 
 
-#define _MAX_MSG_SIZE 9
+#define _MAX_MSG_SIZE 12
 
 // Define the message type for communicating between client and server
 typedef struct __attribute__((packed))
@@ -35,7 +35,8 @@ typedef struct __attribute__((packed))
 }
 _Message_t;
 
-#define _MSGID_printer_Print 0
+#define _MSGID_radio_Signal 0
+#define _MSGID_radio_Temparature 1
 
 
-#endif // PRINTER_MESSAGES_H_INCLUDE_GUARD
+#endif // RADIO_MESSAGES_H_INCLUDE_GUARD
