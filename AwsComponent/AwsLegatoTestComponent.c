@@ -164,12 +164,12 @@ COMPONENT_INIT
 
 
 	jsonStruct_t berHandler;
-	u_int32_t ber;
+	int32_t ber;
 	berHandler.cb = NULL;
 	berHandler.pKey = "ber";
 	berHandler.pData = &ber;
-	berHandler.dataLength = sizeof(u_int32_t);
-	berHandler.type = SHADOW_JSON_UINT32;
+	berHandler.dataLength = sizeof(int32_t);
+	berHandler.type = SHADOW_JSON_INT32;
 
 	jsonStruct_t rssiHandler;
 	int32_t rssi;
@@ -283,7 +283,7 @@ COMPONENT_INIT
 			}
 		}
 		IOT_INFO("*****************************************************************************************\n");
-		sleep(20);
+		sleep(30);
 	}
 
 	if(SUCCESS != rc) {
