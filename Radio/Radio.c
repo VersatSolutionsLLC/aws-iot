@@ -16,6 +16,9 @@ void radio_Rat(char* ratS, size_t size) {
 				//ratS = (char *)malloc(3);
 				strcpy(ratS,"GSM");
 				break;
+			case LE_MRC_RAT_LTE:
+				strcpy(ratS,"LTE");
+				break;
 			default:
 				//ratS = (char *)malloc(7);
 				strcpy(ratS , "Unknown");
