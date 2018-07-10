@@ -15,7 +15,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "821c4d71474ca572f18812d05230ace9"
+#define PROTOCOL_ID_STR "3af1920b94ff7bbdfe3a6b94cd9dcf47"
 
 #ifdef MK_TOOLS_BUILD
     extern const char** radio_ServiceInstanceNamePtr;
@@ -25,7 +25,7 @@
 #endif
 
 
-#define _MAX_MSG_SIZE 12
+#define _MAX_MSG_SIZE 19
 
 // Define the message type for communicating between client and server
 typedef struct __attribute__((packed))
@@ -37,6 +37,9 @@ _Message_t;
 
 #define _MSGID_radio_Signal 0
 #define _MSGID_radio_Temperature 1
+#define _MSGID_radio_Rat 2
+#define _MSGID_radio_Rssi 3
+#define _MSGID_radio_Ber 4
 
 
 #endif // RADIO_MESSAGES_H_INCLUDE_GUARD

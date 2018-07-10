@@ -147,13 +147,37 @@ COMPONENT_INIT
 	temperatureHandler.type = SHADOW_JSON_FLOAT;
 
 	jsonStruct_t timestampHandler;
-
 	u_int32_t timestamp;
 	timestampHandler.cb = NULL;
 	timestampHandler.pKey = "timestamp";
 	timestampHandler.pData = &timestamp;
 	timestampHandler.dataLength = sizeof(u_int32_t);
 	timestampHandler.type = SHADOW_JSON_UINT32;
+
+	jsonStruct_t ratHandler;
+	char rat[8];
+	ratHandler.cb = NULL;
+	ratHandler.pKey = "rat";
+	ratHandler.pData = &rat;
+	ratHandler.dataLength = sizeof(rat);
+	ratHandler.type = SHADOW_JSON_STRING;
+
+
+	jsonStruct_t berHandler;
+	u_int32_t ber;
+	berHandler.cb = NULL;
+	berHandler.pKey = "ber";
+	berHandler.pData = &ber;
+	berHandler.dataLength = sizeof(u_int32_t);
+	berHandler.type = SHADOW_JSON_UINT32;
+
+	jsonStruct_t rssiHandler;
+	int32_t rssi;
+	rssiHandler.cb = NULL;
+	rssiHandler.pKey = "rssi";
+	rssiHandler.pData = &rssi;
+	rssiHandler.dataLength = sizeof(int32_t);
+	rssiHandler.type = SHADOW_JSON_INT32;
 
 
 	char rootCA[PATH_MAX + 1];
@@ -223,6 +247,9 @@ COMPONENT_INIT
 	}
 	temperature = radio_Temperature();
 	signal = radio_Signal();
+	radio_Rat(rat, 7);
+	rssi = radio_Rssi();
+	ber = radio_Ber();
 	timestamp = (unsigned)time(NULL);
 	// loop and publish a change in temperature
 	while(NETWORK_ATTEMPTING_RECONNECT == rc || NETWORK_RECONNECTED == rc || SUCCESS == rc) {
@@ -237,12 +264,15 @@ COMPONENT_INIT
 		//simulateRoomTemperature(&temperature);
 		temperature = radio_Temperature();
 		signal = radio_Signal();
+		radio_Rat(rat, 7);
+		rssi = radio_Rssi();
+		ber = radio_Ber();
 		timestamp = (unsigned)time(NULL);
 		LE_INFO("Timestamp: %d", timestamp);
 		rc = aws_iot_shadow_init_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
 		if(SUCCESS == rc) {
-			rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 3, &temperatureHandler,
-											 &windowActuator, &timestampHandler);
+			rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 6, &temperatureHandler,
+											 &windowActuator, &timestampHandler, &ratHandler, &rssiHandler, &berHandler);
 			if(SUCCESS == rc) {
 				rc = aws_iot_finalize_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
 				if(SUCCESS == rc) {
@@ -253,7 +283,7 @@ COMPONENT_INIT
 			}
 		}
 		IOT_INFO("*****************************************************************************************\n");
-		sleep(1);
+		sleep(20);
 	}
 
 	if(SUCCESS != rc) {
