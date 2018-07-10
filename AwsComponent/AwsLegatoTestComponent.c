@@ -143,7 +143,7 @@ int publishTopic(AWS_IoT_Client* mqttClient, const char* topicName, const int to
 }
 
 //returns lenght of json
-int getRadioJson(char* json){
+int getRadioJson(char* json, const int jsonLength){
 	float temperature = radio_Temperature();
 	int32_t signal = radio_Signal();
 	char rat[8];
@@ -152,7 +152,7 @@ int getRadioJson(char* json){
 	int32_t ber = radio_Ber();
 	u_int32_t timestamp = (unsigned)time(NULL);
 	//if rat == gsm
-	snprintf(json, "{temp:%.2f,rat:%s,sig:%d,rssi:%d,ber:%d}" , temperature,rat,rssi,ber);
+	snprintf(json, jsonLength,"{\"temp\":%.2f,\"rat\":\"%s\",\"sig\":%d,\"rssi\":%d,\"ber\":%d,\"timestamp\":%d}" , temperature,rat,signal,rssi,ber,timestamp);
 	//else if rat == lte
 	return strlen(json);
 }
@@ -162,7 +162,7 @@ COMPONENT_INIT
 	IoT_Error_t rc = FAILURE;
 	//int32_t i = 0;
 
-	char JsonDocumentBuffer[MAX_LENGTH_OF_UPDATE_JSON_BUFFER];
+	/*char JsonDocumentBuffer[MAX_LENGTH_OF_UPDATE_JSON_BUFFER];
 	size_t sizeOfJsonDocumentBuffer = sizeof(JsonDocumentBuffer) / sizeof(JsonDocumentBuffer[0]);
 	//char *pJsonStringToUpdate;
 	float temperature = 0.0;
@@ -215,7 +215,7 @@ COMPONENT_INIT
 	rssiHandler.dataLength = sizeof(int32_t);
 	rssiHandler.type = SHADOW_JSON_INT32;
 
-
+*/
 	char rootCA[PATH_MAX + 1];
 	char clientCRT[PATH_MAX + 1];
 	char clientKey[PATH_MAX + 1];
@@ -276,32 +276,36 @@ COMPONENT_INIT
 		//return rc;
 	}
 
-	rc = aws_iot_shadow_register_delta(&mqttClient, &windowActuator);
+	//rc = aws_iot_shadow_register_delta(&mqttClient, &windowActuator);
 
 	if(SUCCESS != rc) {
 		IOT_ERROR("Shadow Register Delta Error");
 	}
-	temperature = radio_Temperature();
-	signal = radio_Signal();
-	radio_Rat(rat, 7);
-	rssi = radio_Rssi();
-	ber = radio_Ber();
-	timestamp = (unsigned)time(NULL);
+//	temperature = radio_Temperature();
+//	signal = radio_Signal();
+//	radio_Rat(rat, 7);
+//	rssi = radio_Rssi();
+//	ber = radio_Ber();
+//	timestamp = (unsigned)time(NULL);
 	// loop and publish a change in temperature
 	char json[1024];
 	const int radioTopicLen = strlen(RADIO_TOPIC);
 	while(NETWORK_ATTEMPTING_RECONNECT == rc || NETWORK_RECONNECTED == rc || SUCCESS == rc) {
-		rc = aws_iot_shadow_yield(&mqttClient, 200);
+		//rc = aws_iot_shadow_yield(&mqttClient, 200);
 		if(NETWORK_ATTEMPTING_RECONNECT == rc) {
 			sleep(1);
 			// If the client is attempting to reconnect we will skip the rest of the loop.
 			continue;
 		}
-		int radioJsonLen = getRadioJson(json);
+		int radioJsonLen = getRadioJson(json, 1024);
 		if(radioJsonLen > 0){
 			publishTopic(&mqttClient,RADIO_TOPIC, radioTopicLen, json, radioJsonLen);
 		}
-		/*IOT_INFO("On Device: Signal Strength %d", signal);
+		else{
+			LE_ERROR("Not able to publish as radioJSONLen = %d", radioJsonLen);
+		}
+		//rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 6, &temperatureHandler,
+/*IOT_INFO("On Device: Signal Strength %d", signal);
 		temperature = radio_Temperature();
 		signal = radio_Signal();
 		radio_Rat(rat, 7);
