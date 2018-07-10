@@ -47,17 +47,6 @@ static char HostAddress[HOST_ADDRESS_SIZE] = AWS_IOT_MQTT_HOST;
 static uint32_t port = AWS_IOT_MQTT_PORT;
 static uint8_t numPubs = 5;
 
-//static void simulateRoomTemperature(float *pRoomTemperature) {
-//	static float deltaChange;
-//
-//	if(*pRoomTemperature >= ROOMTEMPERATURE_UPPERLIMIT) {
-//		deltaChange = -0.5f;
-//	} else if(*pRoomTemperature <= ROOMTEMPERATURE_LOWERLIMIT) {
-//		deltaChange = 0.5f;
-//	}
-//
-//	*pRoomTemperature += deltaChange;
-//}
 
 void ShadowUpdateStatusCallback(const char *pThingName, ShadowActions_t action, Shadow_Ack_Status_t status,
 								const char *pReceivedJsonDocument, void *pContextData) {
@@ -74,15 +63,6 @@ void ShadowUpdateStatusCallback(const char *pThingName, ShadowActions_t action, 
 		IOT_INFO("Update Accepted !!");
 	}
 }
-
-//void windowActuate_Callback(const char *pJsonString, uint32_t JsonStringDataLen, jsonStruct_t *pContext) {
-//	IOT_UNUSED(pJsonString);
-//	IOT_UNUSED(JsonStringDataLen);
-//
-//	if(pContext != NULL) {
-//		IOT_INFO("Delta - Window state changed to %d", *(bool *) (pContext->pData));
-//	}
-//}
 
 void parseInputArgsForConnectParams(int argc, char **argv) {
 	int opt;
@@ -162,60 +142,6 @@ COMPONENT_INIT
 	IoT_Error_t rc = FAILURE;
 	//int32_t i = 0;
 
-	/*char JsonDocumentBuffer[MAX_LENGTH_OF_UPDATE_JSON_BUFFER];
-	size_t sizeOfJsonDocumentBuffer = sizeof(JsonDocumentBuffer) / sizeof(JsonDocumentBuffer[0]);
-	//char *pJsonStringToUpdate;
-	float temperature = 0.0;
-
-	int32_t signal = 0;
-	jsonStruct_t windowActuator;
-	windowActuator.cb = NULL;
-	windowActuator.pData = &signal;
-	windowActuator.dataLength = sizeof(int32_t);
-	windowActuator.pKey = "signal";
-	windowActuator.type = SHADOW_JSON_INT32;
-
-	jsonStruct_t temperatureHandler;
-	temperatureHandler.cb = NULL;
-	temperatureHandler.pKey = "temperature";
-	temperatureHandler.pData = &temperature;
-	temperatureHandler.dataLength = sizeof(float);
-	temperatureHandler.type = SHADOW_JSON_FLOAT;
-
-	jsonStruct_t timestampHandler;
-	u_int32_t timestamp;
-	timestampHandler.cb = NULL;
-	timestampHandler.pKey = "timestamp";
-	timestampHandler.pData = &timestamp;
-	timestampHandler.dataLength = sizeof(u_int32_t);
-	timestampHandler.type = SHADOW_JSON_UINT32;
-
-	jsonStruct_t ratHandler;
-	char rat[8];
-	ratHandler.cb = NULL;
-	ratHandler.pKey = "rat";
-	ratHandler.pData = &rat;
-	ratHandler.dataLength = sizeof(rat);
-	ratHandler.type = SHADOW_JSON_STRING;
-
-
-	jsonStruct_t berHandler;
-	int32_t ber;
-	berHandler.cb = NULL;
-	berHandler.pKey = "ber";
-	berHandler.pData = &ber;
-	berHandler.dataLength = sizeof(int32_t);
-	berHandler.type = SHADOW_JSON_INT32;
-
-	jsonStruct_t rssiHandler;
-	int32_t rssi;
-	rssiHandler.cb = NULL;
-	rssiHandler.pKey = "rssi";
-	rssiHandler.pData = &rssi;
-	rssiHandler.dataLength = sizeof(int32_t);
-	rssiHandler.type = SHADOW_JSON_INT32;
-
-*/
 	char rootCA[PATH_MAX + 1];
 	char clientCRT[PATH_MAX + 1];
 	char clientKey[PATH_MAX + 1];
@@ -250,7 +176,6 @@ COMPONENT_INIT
 	rc = aws_iot_shadow_init(&mqttClient, &sp);
 	if(SUCCESS != rc) {
 		IOT_ERROR("Shadow Connection Error");
-		//return rc;
 	}
 
 	ShadowConnectParameters_t scp = ShadowConnectParametersDefault;
@@ -262,7 +187,6 @@ COMPONENT_INIT
 	rc = aws_iot_shadow_connect(&mqttClient, &scp);
 	if(SUCCESS != rc) {
 		IOT_ERROR("Shadow Connection Error");
-		//return rc;
 	}
 
 	/*
@@ -273,25 +197,16 @@ COMPONENT_INIT
 	rc = aws_iot_shadow_set_autoreconnect_status(&mqttClient, true);
 	if(SUCCESS != rc) {
 		IOT_ERROR("Unable to set Auto Reconnect to true - %d", rc);
-		//return rc;
 	}
 
-	//rc = aws_iot_shadow_register_delta(&mqttClient, &windowActuator);
 
 	if(SUCCESS != rc) {
 		IOT_ERROR("Shadow Register Delta Error");
 	}
-//	temperature = radio_Temperature();
-//	signal = radio_Signal();
-//	radio_Rat(rat, 7);
-//	rssi = radio_Rssi();
-//	ber = radio_Ber();
-//	timestamp = (unsigned)time(NULL);
 	// loop and publish a change in temperature
 	char json[1024];
 	const int radioTopicLen = strlen(RADIO_TOPIC);
 	while(NETWORK_ATTEMPTING_RECONNECT == rc || NETWORK_RECONNECTED == rc || SUCCESS == rc) {
-		//rc = aws_iot_shadow_yield(&mqttClient, 200);
 		if(NETWORK_ATTEMPTING_RECONNECT == rc) {
 			sleep(1);
 			// If the client is attempting to reconnect we will skip the rest of the loop.
@@ -304,28 +219,7 @@ COMPONENT_INIT
 		else{
 			LE_ERROR("Not able to publish as radioJSONLen = %d", radioJsonLen);
 		}
-		//rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 6, &temperatureHandler,
-/*IOT_INFO("On Device: Signal Strength %d", signal);
-		temperature = radio_Temperature();
-		signal = radio_Signal();
-		radio_Rat(rat, 7);
-		rssi = radio_Rssi();
-		ber = radio_Ber();
-		timestamp = (unsigned)time(NULL);
-		LE_INFO("Timestamp: %d", timestamp);
-		rc = aws_iot_shadow_init_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
-		if(SUCCESS == rc) {
-			rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 6, &temperatureHandler,
-											 &windowActuator, &timestampHandler, &ratHandler, &rssiHandler, &berHandler);
-			if(SUCCESS == rc) {
-				rc = aws_iot_finalize_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
-				if(SUCCESS == rc) {
-					IOT_INFO("Update Shadow: %s", JsonDocumentBuffer);
-					rc = aws_iot_shadow_update(&mqttClient, AWS_IOT_MY_THING_NAME, JsonDocumentBuffer,
-											   ShadowUpdateStatusCallback, NULL, 4, true);
-				}
-			}
-		}*/
+
 		sleep(30);
 	}
 
@@ -340,7 +234,6 @@ COMPONENT_INIT
 		IOT_ERROR("Disconnect error %d", rc);
 	}
 
-	//return rc;
 }
 
 
