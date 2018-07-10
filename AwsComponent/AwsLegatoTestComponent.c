@@ -121,6 +121,42 @@ void parseInputArgsForConnectParams(int argc, char **argv) {
 	}
 
 }
+
+
+int publishTopic(AWS_IoT_Client* mqttClient, const char* topicName, const int topicLen, const char* json, const int jsonLength){
+	IoT_Error_t rc = SUCCESS;
+	IoT_Publish_Message_Params paramsQOS1;
+	paramsQOS1.qos = QOS1;
+	paramsQOS1.payload = (void *)json;
+	paramsQOS1.isRetained = 0;
+	paramsQOS1.payloadLen = jsonLength;
+	rc = aws_iot_mqtt_publish(mqttClient, topicName, topicLen, &paramsQOS1);
+	if (rc == MQTT_REQUEST_TIMEOUT_ERROR)
+	{
+		IOT_ERROR("QOS1 publish ack for activity record not received. Loss of connectivity.");
+	}
+	else if (rc != SUCCESS)
+	{
+		IOT_ERROR("Activity records publish failure %d", rc);
+	}
+	return rc;
+}
+
+//returns lenght of json
+int getRadioJson(char* json){
+	float temperature = radio_Temperature();
+	int32_t signal = radio_Signal();
+	char rat[8];
+	radio_Rat(rat, 7);
+	int32_t rssi = radio_Rssi();
+	int32_t ber = radio_Ber();
+	u_int32_t timestamp = (unsigned)time(NULL);
+	//if rat == gsm
+	snprintf(json, "{temp:%.2f,rat:%s,sig:%d,rssi:%d,ber:%d}" , temperature,rat,rssi,ber);
+	//else if rat == lte
+	return strlen(json);
+}
+
 COMPONENT_INIT
 {
 	IoT_Error_t rc = FAILURE;
@@ -252,6 +288,8 @@ COMPONENT_INIT
 	ber = radio_Ber();
 	timestamp = (unsigned)time(NULL);
 	// loop and publish a change in temperature
+	char json[1024];
+	const int radioTopicLen = strlen(RADIO_TOPIC);
 	while(NETWORK_ATTEMPTING_RECONNECT == rc || NETWORK_RECONNECTED == rc || SUCCESS == rc) {
 		rc = aws_iot_shadow_yield(&mqttClient, 200);
 		if(NETWORK_ATTEMPTING_RECONNECT == rc) {
@@ -259,9 +297,11 @@ COMPONENT_INIT
 			// If the client is attempting to reconnect we will skip the rest of the loop.
 			continue;
 		}
-		IOT_INFO("\n=======================================================================================\n");
-		IOT_INFO("On Device: Signal Strength %d", signal);
-		//simulateRoomTemperature(&temperature);
+		int radioJsonLen = getRadioJson(json);
+		if(radioJsonLen > 0){
+			publishTopic(&mqttClient,RADIO_TOPIC, radioTopicLen, json, radioJsonLen);
+		}
+		/*IOT_INFO("On Device: Signal Strength %d", signal);
 		temperature = radio_Temperature();
 		signal = radio_Signal();
 		radio_Rat(rat, 7);
@@ -281,8 +321,7 @@ COMPONENT_INIT
 											   ShadowUpdateStatusCallback, NULL, 4, true);
 				}
 			}
-		}
-		IOT_INFO("*****************************************************************************************\n");
+		}*/
 		sleep(30);
 	}
 
