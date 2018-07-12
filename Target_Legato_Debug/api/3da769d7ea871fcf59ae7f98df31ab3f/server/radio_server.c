@@ -307,97 +307,7 @@ void radio_AdvertiseService
 //--------------------------------------------------------------------------------------------------
 
 
-static void Handle_radio_Signal
-(
-    le_msg_MessageRef_t _msgRef
-
-)
-{
-    // Get the message buffer pointer
-    __attribute__((unused)) uint8_t* _msgBufPtr =
-        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
-
-    // Needed if we are returning a result or output values
-    uint8_t* _msgBufStartPtr = _msgBufPtr;
-
-    // Unpack which outputs are needed
-
-    // Unpack the input parameters from the message
-
-    // Define storage for output parameters
-
-    // Call the function
-    int32_t _result;
-    _result  = radio_Signal (  );
-
-    // Re-use the message buffer for the response
-    _msgBufPtr = _msgBufStartPtr;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack the result first
-    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize, _result ));
-
-    // Pack any "out" parameters
-
-    // Return the response
-    TRACE("Sending response to client session %p : %ti bytes sent",
-          le_msg_GetSession(_msgRef),
-          _msgBufPtr-_msgBufStartPtr);
-
-
-    le_msg_Respond(_msgRef);
-
-    return;
-}
-
-
-static void Handle_radio_Temperature
-(
-    le_msg_MessageRef_t _msgRef
-
-)
-{
-    // Get the message buffer pointer
-    __attribute__((unused)) uint8_t* _msgBufPtr =
-        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
-
-    // Needed if we are returning a result or output values
-    uint8_t* _msgBufStartPtr = _msgBufPtr;
-
-    // Unpack which outputs are needed
-
-    // Unpack the input parameters from the message
-
-    // Define storage for output parameters
-
-    // Call the function
-    int32_t _result;
-    _result  = radio_Temperature (  );
-
-    // Re-use the message buffer for the response
-    _msgBufPtr = _msgBufStartPtr;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack the result first
-    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize, _result ));
-
-    // Pack any "out" parameters
-
-    // Return the response
-    TRACE("Sending response to client session %p : %ti bytes sent",
-          le_msg_GetSession(_msgRef),
-          _msgBufPtr-_msgBufStartPtr);
-
-
-    le_msg_Respond(_msgRef);
-
-    return;
-}
-
-
-static void Handle_radio_Rat
+static void Handle_radio_Info
 (
     le_msg_MessageRef_t _msgRef
 
@@ -419,51 +329,51 @@ static void Handle_radio_Rat
     }
 
     // Unpack the input parameters from the message
-    size_t ratSize;
+    size_t paramsSize;
     if (!le_pack_UnpackSize( &_msgBufPtr, &_msgBufSize,
-                               &ratSize ))
+                               &paramsSize ))
     {
         goto error_unpack;
     }
-    if ( (ratSize > 7) &&
-         (ratSize < UINT32_MAX) )
+    if ( (paramsSize > 1024) &&
+         (paramsSize < UINT32_MAX) )
     {
-        LE_DEBUG("Adjusting ratSize from %zu to 7", ratSize);
-        ratSize = 7;
+        LE_DEBUG("Adjusting paramsSize from %zu to 1024", paramsSize);
+        paramsSize = 1024;
     }
-    if (ratSize >= UINT32_MAX)
+    if (paramsSize >= UINT32_MAX)
     {
-        ratSize = 0;
+        paramsSize = 0;
     }
     else
     {
-        ratSize++;
+        paramsSize++;
     }
 
     // Define storage for output parameters
-    char ratBuffer[8];
-    char *rat = ratBuffer;
-    rat[0] = 0;
+    char paramsBuffer[1025];
+    char *params = paramsBuffer;
+    params[0] = 0;
     if (!(_requiredOutputs & (1u << 0)))
     {
-        rat = NULL;
-        ratSize = 0;
+        params = NULL;
+        paramsSize = 0;
     }
 
     // Call the function
-    radio_Rat ( 
-        rat, 
-        ratSize );
+    radio_Info ( 
+        params, 
+        paramsSize );
 
     // Re-use the message buffer for the response
     _msgBufPtr = _msgBufStartPtr;
     _msgBufSize = _MAX_MSG_SIZE;
 
     // Pack any "out" parameters
-    if (rat)
+    if (params)
     {
         LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
-                                      rat, 7 ));
+                                      params, 1024 ));
     }
 
     // Return the response
@@ -478,96 +388,6 @@ static void Handle_radio_Rat
 
 error_unpack:
     LE_KILL_CLIENT("Error unpacking message");
-}
-
-
-static void Handle_radio_Rssi
-(
-    le_msg_MessageRef_t _msgRef
-
-)
-{
-    // Get the message buffer pointer
-    __attribute__((unused)) uint8_t* _msgBufPtr =
-        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
-
-    // Needed if we are returning a result or output values
-    uint8_t* _msgBufStartPtr = _msgBufPtr;
-
-    // Unpack which outputs are needed
-
-    // Unpack the input parameters from the message
-
-    // Define storage for output parameters
-
-    // Call the function
-    int32_t _result;
-    _result  = radio_Rssi (  );
-
-    // Re-use the message buffer for the response
-    _msgBufPtr = _msgBufStartPtr;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack the result first
-    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize, _result ));
-
-    // Pack any "out" parameters
-
-    // Return the response
-    TRACE("Sending response to client session %p : %ti bytes sent",
-          le_msg_GetSession(_msgRef),
-          _msgBufPtr-_msgBufStartPtr);
-
-
-    le_msg_Respond(_msgRef);
-
-    return;
-}
-
-
-static void Handle_radio_Ber
-(
-    le_msg_MessageRef_t _msgRef
-
-)
-{
-    // Get the message buffer pointer
-    __attribute__((unused)) uint8_t* _msgBufPtr =
-        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
-
-    // Needed if we are returning a result or output values
-    uint8_t* _msgBufStartPtr = _msgBufPtr;
-
-    // Unpack which outputs are needed
-
-    // Unpack the input parameters from the message
-
-    // Define storage for output parameters
-
-    // Call the function
-    uint32_t _result;
-    _result  = radio_Ber (  );
-
-    // Re-use the message buffer for the response
-    _msgBufPtr = _msgBufStartPtr;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack the result first
-    LE_ASSERT(le_pack_PackUint32( &_msgBufPtr, &_msgBufSize, _result ));
-
-    // Pack any "out" parameters
-
-    // Return the response
-    TRACE("Sending response to client session %p : %ti bytes sent",
-          le_msg_GetSession(_msgRef),
-          _msgBufPtr-_msgBufStartPtr);
-
-
-    le_msg_Respond(_msgRef);
-
-    return;
 }
 
 
@@ -588,11 +408,7 @@ static void ServerMsgRecvHandler
     // Dispatch to appropriate message handler and get response
     switch (msgPtr->id)
     {
-        case _MSGID_radio_Signal : Handle_radio_Signal(msgRef); break;
-        case _MSGID_radio_Temperature : Handle_radio_Temperature(msgRef); break;
-        case _MSGID_radio_Rat : Handle_radio_Rat(msgRef); break;
-        case _MSGID_radio_Rssi : Handle_radio_Rssi(msgRef); break;
-        case _MSGID_radio_Ber : Handle_radio_Ber(msgRef); break;
+        case _MSGID_radio_Info : Handle_radio_Info(msgRef); break;
 
         default: LE_ERROR("Unknowm msg id = %i", msgPtr->id);
     }

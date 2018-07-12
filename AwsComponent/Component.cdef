@@ -1,6 +1,6 @@
 cflags:
 {
-	-I $CURDIR/../AwsComponent/
+		-I $CURDIR/../AwsComponent/
 		-I $CURDIR/../AwsComponent/mbedtls/include
 		-I $CURDIR/../AwsComponent/mbedtls/
 		-I $CURDIR/../AwsComponent/common

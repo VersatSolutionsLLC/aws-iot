@@ -1,1 +1,6 @@
-FUNCTION int32 Signal();FUNCTION int32 Temperature();FUNCTION Rat(string rat[7] OUT);FUNCTION int32 Rssi(); FUNCTION uint32 Ber();
+// FUNCTION int32 Signal();
+// FUNCTION int32 Temperature();
+// FUNCTION Rat(string rat[7] OUT);
+// FUNCTION int32 Rssi();
+// FUNCTION uint32 Ber();
+ FUNCTION Info(string params[1024] OUT);

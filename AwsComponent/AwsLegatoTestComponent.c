@@ -122,20 +122,111 @@ int publishTopic(AWS_IoT_Client* mqttClient, const char* topicName, const int to
 	return rc;
 }
 
+
+char** str_split(char* a_str, const char a_delim)
+{
+    char** result    = 0;
+    size_t count     = 0;
+    char* tmp        = a_str;
+    char* last_comma = 0;
+    char delim[2];
+    delim[0] = a_delim;
+    delim[1] = 0;
+
+    /* Count how many elements will be extracted. */
+    while (*tmp)
+    {
+        if (a_delim == *tmp)
+        {
+            count++;
+            last_comma = tmp;
+        }
+        tmp++;
+    }
+
+    /* Add space for trailing token. */
+    count += last_comma < (a_str + strlen(a_str) - 1);
+
+    /* Add space for terminating null string so caller
+       knows where the list of returned strings ends. */
+    count++;
+
+    result = malloc(sizeof(char*) * count);
+
+    if (result)
+    {
+        size_t idx  = 0;
+        char* token = strtok(a_str, delim);
+
+        while (token)
+        {
+            LE_ASSERT(idx < count);
+            *(result + idx++) = strdup(token);
+            token = strtok(0, delim);
+        }
+        LE_ASSERT(idx == count - 1);
+        *(result + idx) = 0;
+    }
+
+    return result;
+}
+
+
 //returns lenght of json
 int getRadioJson(char* json, const int jsonLength){
-	float temperature = radio_Temperature();
-	int32_t signal = radio_Signal();
-	char rat[8];
-	radio_Rat(rat, 7);
-	int32_t rssi = radio_Rssi();
-	int32_t ber = radio_Ber();
+	char params[1024];
+	radio_Info(params, 1024);
+    char** tokens = str_split(params, ',');
+    int temperature = 1;
+    int rssi = 2;
+
+    int rsrp = 3;
+    int rsrq = 4;
+    int snr = 5;
+    int bler = 1;
+
+    int ber = 3;
+
+    char *rat = *(tokens);
 	u_int32_t timestamp = (unsigned)time(NULL);
-	//if rat == gsm
-	snprintf(json, jsonLength,"{\"temp\":%.2f,\"rat\":\"%s\",\"sig\":%d,\"rssi\":%d,\"ber\":%d,\"timestamp\":%d}" , temperature,rat,signal,rssi,ber,timestamp);
-	//else if rat == lte
+
+    int cmpGSM = strcmp(rat,"GSM");
+    int cmpLTE = strcmp(rat,"LTE");
+
+    if(cmpGSM == 0){
+    	snprintf(json, jsonLength,"{\"temp\":%s,\"rat\":\"%s\",\"rssi\":%s,\"ber\":%s,\"timestamp\":%d}" , *(tokens + temperature),rat,*(tokens + rssi),*(tokens + ber), timestamp);
+    }
+    else if(cmpLTE == 0){
+    	snprintf(json, jsonLength,"{\"temp\":%s,\"rat\":\"%s\",\"rssi\":%s,\"rsrp\":%s,\"rsrq\":%s,\"snr\":%s,\"bler\":%s,\"timestamp\":%d}" ,*(tokens + temperature),rat,*(tokens + rssi),*(tokens + rsrp),*(tokens + rsrq),*(tokens + snr),*(tokens + bler), timestamp);
+    }
+
 	return strlen(json);
 }
+
+void disconnectCallbackHandler(AWS_IoT_Client *pClient, void *data) {
+	IOT_WARN("MQTT Disconnect");
+	IoT_Error_t rc = FAILURE;
+
+	if(NULL == pClient) {
+		return;
+	}
+
+	IOT_UNUSED(data);
+
+	if(aws_iot_is_autoreconnect_enabled(pClient)) {
+		IOT_INFO("Auto Reconnect is enabled, Reconnecting attempt will start now");
+	} else {
+		IOT_WARN("Auto Reconnect not enabled. Starting manual reconnect...");
+		rc = aws_iot_mqtt_attempt_reconnect(pClient);
+		if(NETWORK_RECONNECTED == rc) {
+			IOT_WARN("Manual Reconnect Successful");
+		} else {
+			IOT_WARN("Manual Reconnect Failed - %d", rc);
+		}
+	}
+}
+
+
 
 COMPONENT_INIT
 {
@@ -158,50 +249,49 @@ COMPONENT_INIT
 	IOT_DEBUG("clientCRT %s", clientCRT);
 	IOT_DEBUG("clientKey %s", clientKey);
 
-	//parseInputArgsForConnectParams(argc, argv);
 
 	// initialize the mqtt client
 	AWS_IoT_Client mqttClient;
+	IoT_Client_Init_Params mqttInitParams = iotClientInitParamsDefault;
+	IoT_Client_Connect_Params connectParams = iotClientConnectParamsDefault;
 
-	ShadowInitParameters_t sp = ShadowInitParametersDefault;
-	sp.pHost = AWS_IOT_MQTT_HOST;
-	sp.port = AWS_IOT_MQTT_PORT;
-	sp.pClientCRT = clientCRT;
-	sp.pClientKey = clientKey;
-	sp.pRootCA = rootCA;
-	sp.enableAutoReconnect = false;
-	sp.disconnectHandler = NULL;
+	mqttInitParams.enableAutoReconnect = false; // We enable this later below
+	mqttInitParams.pHostURL = HostAddress;
+	mqttInitParams.port = port;
+	mqttInitParams.pRootCALocation = rootCA;
+	mqttInitParams.pDeviceCertLocation = clientCRT;
+	mqttInitParams.pDevicePrivateKeyLocation = clientKey;
+	mqttInitParams.mqttCommandTimeout_ms = 20000;
+	mqttInitParams.tlsHandshakeTimeout_ms = 5000;
+	mqttInitParams.isSSLHostnameVerify = true;
+	mqttInitParams.disconnectHandler = disconnectCallbackHandler;
+	mqttInitParams.disconnectHandlerData = NULL;
 
-	IOT_INFO("Shadow Init");
-	rc = aws_iot_shadow_init(&mqttClient, &sp);
+	rc = aws_iot_mqtt_init(&mqttClient, &mqttInitParams);
 	if(SUCCESS != rc) {
-		IOT_ERROR("Shadow Connection Error");
+		IOT_ERROR("aws_iot_mqtt_init returned error : %d ", rc);
 	}
 
-	ShadowConnectParameters_t scp = ShadowConnectParametersDefault;
-	scp.pMyThingName = AWS_IOT_MY_THING_NAME;
-	scp.pMqttClientId = AWS_IOT_MQTT_CLIENT_ID;
-	scp.mqttClientIdLen = (uint16_t) strlen(AWS_IOT_MQTT_CLIENT_ID);
+	connectParams.keepAliveIntervalInSec = 600;
+	connectParams.isCleanSession = true;
+	connectParams.MQTTVersion = MQTT_3_1_1;
+	connectParams.pClientID = AWS_IOT_MQTT_CLIENT_ID;
+	connectParams.clientIDLen = (uint16_t) strlen(AWS_IOT_MQTT_CLIENT_ID);
+	connectParams.isWillMsgPresent = false;
 
-	IOT_INFO("Shadow Connect");
-	rc = aws_iot_shadow_connect(&mqttClient, &scp);
+	IOT_INFO("Connecting...");
+	rc = aws_iot_mqtt_connect(&mqttClient, &connectParams);
 	if(SUCCESS != rc) {
-		IOT_ERROR("Shadow Connection Error");
+		IOT_ERROR("Error(%d) connecting to %s:%d", rc, mqttInitParams.pHostURL, mqttInitParams.port);
 	}
-
 	/*
 	 * Enable Auto Reconnect functionality. Minimum and Maximum time of Exponential backoff are set in aws_iot_config.h
 	 *  #AWS_IOT_MQTT_MIN_RECONNECT_WAIT_INTERVAL
 	 *  #AWS_IOT_MQTT_MAX_RECONNECT_WAIT_INTERVAL
 	 */
-	rc = aws_iot_shadow_set_autoreconnect_status(&mqttClient, true);
+	rc = aws_iot_mqtt_autoreconnect_set_status(&mqttClient, true);
 	if(SUCCESS != rc) {
 		IOT_ERROR("Unable to set Auto Reconnect to true - %d", rc);
-	}
-
-
-	if(SUCCESS != rc) {
-		IOT_ERROR("Shadow Register Delta Error");
 	}
 	// loop and publish a change in temperature
 	char json[1024];
