@@ -195,12 +195,21 @@ int getRadioJson(char* json, const int jsonLength){
 
     if(cmpGSM == 0){
     	snprintf(json, jsonLength,"{\"temp\":%s,\"rat\":\"%s\",\"rssi\":%s,\"ber\":%s,\"timestamp\":%d}" , *(tokens + temperature),rat,*(tokens + rssi),*(tokens + ber), timestamp);
+    	free(*(tokens + temperature));
+    	free(*(tokens + rssi));
+    	free(*(tokens + ber));
     }
     else if(cmpLTE == 0){
     	snprintf(json, jsonLength,"{\"temp\":%s,\"rat\":\"%s\",\"rssi\":%s,\"rsrp\":%s,\"rsrq\":%s,\"snr\":%s,\"bler\":%s,\"timestamp\":%d}" ,*(tokens + temperature),rat,*(tokens + rssi),*(tokens + rsrp),*(tokens + rsrq),*(tokens + snr),*(tokens + bler), timestamp);
-    }
-
-	return strlen(json);
+    	free(*(tokens + temperature));
+    	free(*(tokens + rssi));
+    	free(*(tokens + bler));
+    	free(*(tokens + rsrp));
+    	free(*(tokens + rsrp));
+    	free(*(tokens + snr));
+   }
+   free(tokens);
+   return strlen(json);
 }
 
 void disconnectCallbackHandler(AWS_IoT_Client *pClient, void *data) {
