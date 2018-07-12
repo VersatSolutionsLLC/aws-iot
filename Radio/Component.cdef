@@ -6,7 +6,7 @@ provides:
 {
     api:
     {
-        radio = printer.api
+        radio = radio.api
     }
 }
 requires:

@@ -35,74 +35,19 @@
 
 
 
-#define ROOMTEMPERATURE_UPPERLIMIT 32.0f
-#define ROOMTEMPERATURE_LOWERLIMIT 25.0f
-#define STARTING_ROOMTEMPERATURE ROOMTEMPERATURE_LOWERLIMIT
 
-#define MAX_LENGTH_OF_UPDATE_JSON_BUFFER 200
 
-static char certDirectory[PATH_MAX + 1] = "/user/certs";
 #define HOST_ADDRESS_SIZE 255
 static char HostAddress[HOST_ADDRESS_SIZE] = AWS_IOT_MQTT_HOST;
 static uint32_t port = AWS_IOT_MQTT_PORT;
-static uint8_t numPubs = 5;
 
 
-void ShadowUpdateStatusCallback(const char *pThingName, ShadowActions_t action, Shadow_Ack_Status_t status,
-								const char *pReceivedJsonDocument, void *pContextData) {
-	IOT_UNUSED(pThingName);
-	IOT_UNUSED(action);
-	IOT_UNUSED(pReceivedJsonDocument);
-	IOT_UNUSED(pContextData);
-
-	if(SHADOW_ACK_TIMEOUT == status) {
-		IOT_INFO("Update Timeout--");
-	} else if(SHADOW_ACK_REJECTED == status) {
-		IOT_INFO("Update RejectedXX");
-	} else if(SHADOW_ACK_ACCEPTED == status) {
-		IOT_INFO("Update Accepted !!");
-	}
-}
-
-void parseInputArgsForConnectParams(int argc, char **argv) {
-	int opt;
-
-	while(-1 != (opt = getopt(argc, argv, "h:p:c:n:"))) {
-		switch(opt) {
-			case 'h':
-				strncpy(HostAddress, optarg, HOST_ADDRESS_SIZE);
-				IOT_DEBUG("Host %s", optarg);
-				break;
-			case 'p':
-				port = atoi(optarg);
-				IOT_DEBUG("arg %s", optarg);
-				break;
-			case 'c':
-				strncpy(certDirectory, optarg, PATH_MAX + 1);
-				IOT_DEBUG("cert root directory %s", optarg);
-				break;
-			case 'n':
-				numPubs = atoi(optarg);
-				IOT_DEBUG("num pubs %s", optarg);
-				break;
-			case '?':
-				if(optopt == 'c') {
-					IOT_ERROR("Option -%c requires an argument.", optopt);
-				} else if(isprint(optopt)) {
-					IOT_WARN("Unknown option `-%c'.", optopt);
-				} else {
-					IOT_WARN("Unknown option character `\\x%x'.", optopt);
-				}
-				break;
-			default:
-				IOT_ERROR("ERROR in command line argument parsing");
-				break;
-		}
-	}
-
-}
 
 
+
+/**
+ * Publish AWS IoT topic
+ */
 int publishTopic(AWS_IoT_Client* mqttClient, const char* topicName, const int topicLen, const char* json, const int jsonLength){
 	IoT_Error_t rc = SUCCESS;
 	IoT_Publish_Message_Params paramsQOS1;
@@ -122,7 +67,9 @@ int publishTopic(AWS_IoT_Client* mqttClient, const char* topicName, const int to
 	return rc;
 }
 
-
+/**
+ * Split string
+ */
 char** str_split(char* a_str, const char a_delim)
 {
     char** result    = 0;
