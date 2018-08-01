@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include "radio_interface.h"
+#include "aws_server.h"
 
 #ifdef __cplusplus
 }

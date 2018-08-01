@@ -12,9 +12,9 @@
 extern "C" {
 #endif
 
-extern const char* _AwsComponent_radio_ServiceInstanceName;
-const char** radio_ServiceInstanceNamePtr = &_AwsComponent_radio_ServiceInstanceName;
-void radio_ConnectService(void);
+extern const char* _AwsComponent_aws_ServiceInstanceName;
+const char** aws_ServiceInstanceNamePtr = &_AwsComponent_aws_ServiceInstanceName;
+void aws_AdvertiseService(void);
 // Component log session variables.
 le_log_SessionRef_t AwsComponent_LogSession;
 le_log_Level_t* AwsComponent_LogLevelFilterPtr;
@@ -28,8 +28,8 @@ __attribute__((constructor)) void _AwsComponent_Init(void)
 {
     LE_DEBUG("Initializing AwsComponent component library.");
 
-    // Connect client-side IPC interfaces.
-    radio_ConnectService();
+    // Advertise server-side IPC interfaces.
+    aws_AdvertiseService();
 
     // Register the component with the Log Daemon.
     AwsComponent_LogSession = log_RegComponent("AwsComponent", &AwsComponent_LogLevelFilterPtr);

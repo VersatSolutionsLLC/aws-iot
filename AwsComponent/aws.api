@@ -1,0 +1,33 @@
+FUNCTION InitConnectionParams(string host[256] IN,int32 port IN);
+FUNCTION InitTlsParams(string certDir[256] IN,string rootCA[256] IN,string cert[256] IN,string privateKey[256] IN);
+FUNCTION Init();
+FUNCTION int32 Connect();
+FUNCTION int32 Publish
+(
+	string topic[256] IN,
+	int32 topicLen IN,
+	int32 qosType IN,
+	string payload[256] IN,
+	int32 payloadLen IN
+	
+);
+FUNCTION int32 Subscribe
+(
+	string topic[256] IN,
+	int32 topicLen IN,
+	int32 qosType IN,
+	int32 timeout IN
+);
+FUNCTION int32 UnSubscribe
+(
+	string topic[256] IN,
+	int32 topicLen IN
+);
+FUNCTION int32 disconnect
+(
+	
+);
+FUNCTION int32 Yield
+(
+	int32 timeout IN
+);

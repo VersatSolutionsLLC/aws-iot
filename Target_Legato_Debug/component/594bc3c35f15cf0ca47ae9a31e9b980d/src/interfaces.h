@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include "api/d9fcdff625fff50950977f509730534e/client/radio_interface.h"
+#include "api/d5854f3c41849a3cb6bc63b84f20f34f/server/aws_server.h"
 
 #ifdef __cplusplus
 }

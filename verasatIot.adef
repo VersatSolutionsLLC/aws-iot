@@ -1,7 +1,6 @@
 executables:
 {
-	awslegatotest = ( AwsComponent )
-	radio = ( Radio )
+	awsIot = ( AwsComponent )
 }
 
 requires:
@@ -25,23 +24,21 @@ processes:
 {
 	envVars:
 	{
-		LE_LOG_LEVEL = DEBUG
+		LE_LOG_LEVEL = 	DEBUG
 	}
 
 	run:
 	{
-		( awslegatotest )
-		( radio )
+		( awsIot )
 	}
-
+	faultAction: restart
 	maxCoreDumpFileBytes: 512K
 	maxFileBytes: 512K
 }
-bindings:
+
+extern:
 {
-    awslegatotest.AwsComponent.radio -> radio.Radio.radio
-    radio.Radio.le_mrc -> modemService.le_mrc
-    radio.Radio.le_temp -> modemService.le_temp
+    aws = awsIot.AwsComponent.aws
 }
 version: 1.0.0
 maxFileSystemBytes: 512K

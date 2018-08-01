@@ -1,5 +1,5 @@
 
-// Startup code for the executable 'radio'.
+// Startup code for the executable 'awsIot'.
 // This is a generated file, do not edit.
 
 #include "legato.h"
@@ -9,13 +9,11 @@
 
 
 // Define IPC API interface names.
-LE_SHARED const char* _Radio_radio_ServiceInstanceName = "radio.Radio.radio";
-LE_SHARED const char* _Radio_le_mrc_ServiceInstanceName = "radio.Radio.le_mrc";
-LE_SHARED const char* _Radio_le_temp_ServiceInstanceName = "radio.Radio.le_temp";
+LE_SHARED const char* _AwsComponent_aws_ServiceInstanceName = "aws";
 
 // Define default component's log session variables.
-LE_SHARED le_log_SessionRef_t radio_exe_LogSession;
-LE_SHARED le_log_Level_t* radio_exe_LogLevelFilterPtr;
+LE_SHARED le_log_SessionRef_t awsIot_exe_LogSession;
+LE_SHARED le_log_Level_t* awsIot_exe_LogLevelFilterPtr;
 
 // Loads a library using dlopen().
 __attribute__((unused)) static void LoadLib
@@ -38,7 +36,7 @@ int main(int argc, char* argv[])
     // Make stdout line buffered so printf shows up in logs without flushing.
     setlinebuf(stdout);
 
-    radio_exe_LogSession = log_RegComponent("radio_exe", &radio_exe_LogLevelFilterPtr);
+    awsIot_exe_LogSession = log_RegComponent("awsIot_exe", &awsIot_exe_LogLevelFilterPtr);
 
     // Connect to the log control daemon.
     // Note that there are some rare cases where we don't want the
@@ -52,7 +50,7 @@ int main(int argc, char* argv[])
     #endif
 
     // Load dynamic libraries.
-    LoadLib("libComponent_Radio.so");
+    LoadLib("libComponent_AwsComponent.so");
 
     // Set the Signal Fault handler
     le_sig_InstallShowStackHandler();

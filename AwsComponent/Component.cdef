@@ -6,20 +6,20 @@ cflags:
 		-I $CURDIR/../AwsComponent/common
 		-I $CURDIR/../AwsComponent/jsmn
 		-I $CURDIR/../AwsComponent/include
-		-DENABLE_IOT_DEBUG
-		-DENABLE_IOT_ERROR
-		-DENABLE_IOT_TRACE
-		-DENABLE_IOT_DEBUG
-		-DENABLE_IOT_INFO
-		-DDEBUG_LEVEL=5
+		#if ${AWS_DEBUG} = 1
+			-DENABLE_IOT_DEBUG
+			-DENABLE_IOT_ERROR
+			-DENABLE_IOT_TRACE
+			-DENABLE_IOT_INFO
+    	#endif
 }
 
-requires:
+provides:
 {
-	api:
-	{
-		radio = radio.api
-	}
+    api:
+    {
+        aws = AwsComponent/aws.api
+    }
 }
 
 bundles:
@@ -130,6 +130,6 @@ sources:
 	
 	mbedtls/network_mbedtls_wrapper.c
 	
-	AwsLegatoTestComponent.c
+	AwsIot.c
 
 }
