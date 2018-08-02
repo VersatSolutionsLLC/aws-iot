@@ -1,0 +1,12 @@
+sources:
+{
+	PublishRadio.c
+}
+requires:
+{
+    api:
+    {
+        AwsComponent/aws.api
+        Radio/radio.api
+    }
+}

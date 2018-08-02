@@ -1,0 +1,1 @@
+FUNCTION Info(string params[1024] OUT);

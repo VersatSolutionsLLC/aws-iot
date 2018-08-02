@@ -1,6 +1,8 @@
 executables:
 {
 	awsIot = ( AwsComponent )
+	radio = ( Radio )
+	publish = (PublishRadio)
 }
 
 requires:
@@ -30,12 +32,20 @@ processes:
 	run:
 	{
 		( awsIot )
+		( radio )
+		( publish )
 	}
 	faultAction: restart
 	maxCoreDumpFileBytes: 512K
 	maxFileBytes: 512K
 }
-
+bindings:
+{
+    publish.PublishRadio.radio -> radio.Radio.radio
+    publish.PublishRadio.aws -> awsIot.AwsComponent.aws
+    radio.Radio.le_mrc -> modemService.le_mrc
+    radio.Radio.le_temp -> modemService.le_temp
+}
 extern:
 {
     aws = awsIot.AwsComponent.aws

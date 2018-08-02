@@ -44,6 +44,16 @@ typedef struct {
 
 TLSParams tlsParams;
 ConnectionParams connectionParams;
+/**
+ * Stop yield thread
+ */
+void _stopYieldThread() {
+	unsubscribe = true;
+	// Main yieldThread joins with the child before exiting the process.
+	LE_DEBUG("Waiting for Yield thread to finish..");
+	void* threadResult;
+	le_thread_Join(yieldThread, &threadResult);
+}
 
 /**
  * Initialize TLS connection parameters. If called with empty parameters, it uses the values defined in the
@@ -510,16 +520,6 @@ int aws_Subscribe(const char* sTopic, int32_t topicLen, int32_t qosType) {
 	return rc;
 }
 
-/**
- * Stop yield thread
- */
-void _stopYieldThread() {
-	unsubscribe = true;
-	// Main yieldThread joins with the child before exiting the process.
-	LE_DEBUG("Waiting for Yield thread to finish..");
-	void* threadResult;
-	le_thread_Join(yieldThread, &threadResult);
-}
 
 /**
  * Unsubscribe to a particular topic

@@ -1,0 +1,19 @@
+sources:
+{
+	Radio.c
+}
+provides:
+{
+    api:
+    {
+        radio = Radio/radio.api
+    }
+}
+requires:
+{
+    api:
+    {
+        modemServices/le_mrc.api
+        modemServices/le_temp.api
+    }
+}
