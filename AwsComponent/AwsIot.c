@@ -15,16 +15,19 @@
 
 #define HOST_ADDRESS_SIZE 255
 
+static int _numSubcribes;
+
 static bool unsubscribe = false;
 
 static le_thread_Ref_t yieldThread;
-static le_thread_Ref_t MainThread;
+
 // Mutex used to prevent races between the threads.
 static le_mutex_Ref_t Mutex;
-#define LOCK()      le_mutex_Lock(Mutex);
-#define UNLOCK()    le_mutex_Unlock(Mutex);
+static le_mutex_Ref_t MutexSubscribe;
+#define LOCK()      le_mutex_Lock(Mutex)
+#define UNLOCK()    le_mutex_Unlock(Mutex)
 
-AWS_IoT_Client client;
+static AWS_IoT_Client client;
 
 typedef struct {
 	char rootCA[PATH_MAX + 1];
@@ -42,34 +45,16 @@ typedef struct {
 TLSParams tlsParams;
 ConnectionParams connectionParams;
 
-
-void _stopThread(){
-	if (le_thread_GetCurrent() == MainThread)
-	    {
-	        // Main yieldThread joins with the child before exiting the process.
-			LE_DEBUG("Yield thread joins with main thread.");
-	        void* threadResult;
-	        le_thread_Join(yieldThread, &threadResult);
-
-	    }
-	    else
-	    {
-	        // Child yieldThread just exits so the main yieldThread can join with it.
-			LE_DEBUG("Yield thread exited.");
-			le_thread_Exit(NULL);
-	    }
-}
-
 /**
  * Initialize TLS connection parameters. If called with empty parameters, it uses the values defined in the
  * configure file.
  */
-void aws_InitTlsParams(const char* certPath, const char* rootCa,
+void _initTlsParams(const char* certPath, const char* rootCa,
 		const char* privateKey, const char* cert) {
 
 	if (strlen(certPath) < 0 || certPath == NULL) {
 
-		LE_DEBUG("Certificate path is not supplied. Use default one('%s')",
+		LE_DEBUG("Certificate path is not supplied. Using default ('%s')",
 				AWS_IOT_CERT_PATH);
 		snprintf(tlsParams.certDirectory, PATH_MAX + 1, "%s",
 		AWS_IOT_CERT_PATH);
@@ -80,7 +65,7 @@ void aws_InitTlsParams(const char* certPath, const char* rootCa,
 	// Root CA certificate name update
 	if (strlen(rootCa) < 0 || rootCa == NULL) {
 		LE_DEBUG(
-				"Root CA certificate name is not supplied. Use default one('%s')",
+				"Root CA certificate name is not supplied. Using default ('%s')",
 				AWS_IOT_ROOT_CA_FILENAME);
 		snprintf(tlsParams.rootCA, PATH_MAX + 1, "%s/%s",
 				tlsParams.certDirectory, AWS_IOT_ROOT_CA_FILENAME);
@@ -92,7 +77,7 @@ void aws_InitTlsParams(const char* certPath, const char* rootCa,
 	// AWS_IOT certificate file name update
 	if (strlen(cert) < 0 || cert == NULL) {
 		LE_DEBUG(
-				"AWS_IOT Client certificate file name is not supplied. Use default one('%s')",
+				"AWS_IOT Client certificate file name is not supplied. Using default ('%s')",
 				AWS_IOT_CERTIFICATE_FILENAME);
 		snprintf(tlsParams.clientCrt, PATH_MAX + 1, "%s/%s",
 				tlsParams.certDirectory,
@@ -105,7 +90,7 @@ void aws_InitTlsParams(const char* certPath, const char* rootCa,
 	// AWS_IOT Pvt Key file name update
 	if (strlen(privateKey) < 0 || privateKey == NULL) {
 		LE_DEBUG(
-				"AWS_IOT pvt key file name is not supplied. Use default one('%s')",
+				"AWS_IOT pvt key file name is not supplied. Using default ('%s')",
 				AWS_IOT_PRIVATE_KEY_FILENAME);
 		snprintf(tlsParams.clientKey, PATH_MAX + 1, "%s/%s",
 				tlsParams.certDirectory, AWS_IOT_PRIVATE_KEY_FILENAME);
@@ -123,7 +108,7 @@ void aws_InitTlsParams(const char* certPath, const char* rootCa,
  * Return 			: string
  * ================================================================================
  */
-const char* GetErrorTypeFromCode(int errorCode) {
+const char* _getErrorTypeFromCode(int errorCode) {
 	switch (errorCode) {
 	case 6: {
 		return "NETWORK_PHYSICAL_LAYER_CONNECTED";
@@ -256,7 +241,7 @@ int aws_disconnect() {
 	UNLOCK();
 	if (SUCCESS != rc) {
 		LE_ERROR("Unable to disconnect to MQTT host");
-		LE_ERROR("Error Type(%d) : %s\n", rc, GetErrorTypeFromCode(rc));
+		LE_ERROR("Error Type(%d) : %s\n", rc, _getErrorTypeFromCode(rc));
 	} else {
 		LE_DEBUG("\nSUCCESS:Disconnected from remote host");
 	}
@@ -269,7 +254,7 @@ int aws_disconnect() {
  * Return 			: None
  * ================================================================================
  */
-void disconnectCallbackHandler(AWS_IoT_Client *pClient, void *data) {
+void _disconnectCallback(AWS_IoT_Client *pClient, void *data) {
 	IOT_WARN("MQTT Disconnect");
 	IoT_Error_t rc = FAILURE;
 
@@ -279,6 +264,7 @@ void disconnectCallbackHandler(AWS_IoT_Client *pClient, void *data) {
 
 	IOT_UNUSED(data);
 
+	LOCK();
 	if (aws_iot_is_autoreconnect_enabled(pClient)) {
 		LE_DEBUG(
 				"Auto Reconnect is enabled, Reconnecting attempt will start now");
@@ -289,8 +275,10 @@ void disconnectCallbackHandler(AWS_IoT_Client *pClient, void *data) {
 			IOT_WARN("Manual Reconnect Successful");
 		} else {
 			IOT_WARN("Manual Reconnect Failed - %d", rc);
+			_stopYieldThread();
 		}
 	}
+	UNLOCK();
 }
 
 /**================================================================================
@@ -300,10 +288,10 @@ void disconnectCallbackHandler(AWS_IoT_Client *pClient, void *data) {
  * Return 			: None
  * ================================================================================
  */
-void aws_InitConnectionParams(const char* hostName, const int32_t port) {
+void _initConnectionParams(const char* hostName, const int32_t port) {
 
 	if (strlen(hostName) < 0 || hostName == NULL) {
-		LE_DEBUG("Host name not supplied('%s')", AWS_IOT_MQTT_HOST);
+		LE_DEBUG("Host name not supplied. Using ('%s')", AWS_IOT_MQTT_HOST);
 		snprintf(connectionParams.host, PATH_MAX + 1, "%s", AWS_IOT_MQTT_HOST);
 
 	} else {
@@ -327,7 +315,16 @@ void aws_InitConnectionParams(const char* hostName, const int32_t port) {
  * Return 			: None on success, halts execution in case of failure
  * ================================================================================
  */
-void aws_Init() {
+void _initConnection() {
+
+	ClientState state = _getConnectionState();
+
+	LOCK();
+	if (state == CLIENT_STATE_INITIALIZED) {
+			UNLOCK();
+			return;
+	}
+	// if already Inited, return.
 
 	LE_DEBUG("=============================================\n");
 	LE_DEBUG("Root CA 		= %s\n", tlsParams.rootCA);
@@ -359,11 +356,10 @@ void aws_Init() {
 			|| strlen(tlsParams.clientCrt) != 0);
 	mqttInitParams.mqttCommandTimeout_ms = 20000;
 	mqttInitParams.tlsHandshakeTimeout_ms = 5000;
-	mqttInitParams.disconnectHandler = disconnectCallbackHandler;
+	mqttInitParams.disconnectHandler = _disconnectCallback;
 	mqttInitParams.disconnectHandlerData = NULL;
 	IoT_Error_t rc = FAILURE;
 
-	LOCK();
 	rc = aws_iot_mqtt_init(&client, &mqttInitParams);
 	UNLOCK();
 	if (SUCCESS != rc) {
@@ -376,10 +372,17 @@ void aws_Init() {
  *
  * Objective		: Invokes internal API 'aws_iot_mqtt_connect' to make connection
  * 				      to MQTT broker
- * Return 			: None on success, halts execution in case of failure
+ * Return 			:
  * ================================================================================
  */
 int aws_Connect() {
+	ClientState state = _getConnectionState();
+	LOCK();
+	if (state >= CLIENT_STATE_CONNECTED_IDLE
+				&& state <= CLIENT_STATE_DISCONNECTED_ERROR) {
+			UNLOCK();
+			return SUCCESS;
+	}
 	IoT_Error_t rc = FAILURE;
 	IoT_Client_Connect_Params connectParams = iotClientConnectParamsDefault;
 
@@ -389,31 +392,21 @@ int aws_Connect() {
 	connectParams.pClientID = AWS_IOT_MQTT_CLIENT_ID;
 	connectParams.clientIDLen = (uint16_t) strlen(AWS_IOT_MQTT_CLIENT_ID);
 	connectParams.isWillMsgPresent = false;
-
 	LE_DEBUG("Connecting...");
-	ClientState state = _getConnectionState();
-
-	if (state >= CLIENT_STATE_CONNECTED_IDLE
-			&& state <= CLIENT_STATE_DISCONNECTED_ERROR) {
-		return SUCCESS;
-	}
-	LOCK();
 	rc = aws_iot_mqtt_connect(&client, &connectParams);
-	UNLOCK();
-	if (rc != SUCCESS)
+	if (rc != SUCCESS) {
+		UNLOCK();
 		return rc;
+	}
 
-	/*
-	 * Enable Auto Reconnect functionality. Minimum and Maximum time of Exponential backoff are set in aws_iot_config.h
-	 *  #AWS_IOT_MQTT_MIN_RECONNECT_WAIT_INTERVAL
-	 *  #AWS_IOT_MQTT_MAX_RECONNECT_WAIT_INTERVAL
-	 */
-	LOCK();
+	// Enable Auto Reconnect functionality. Minimum and Maximum time of Exponential backoff are set in aws_iot_config.h
+	//  #AWS_IOT_MQTT_MIN_RECONNECT_WAIT_INTERVAL
+	//  #AWS_IOT_MQTT_MAX_RECONNECT_WAIT_INTERVAL
 	rc = aws_iot_mqtt_autoreconnect_set_status(&client, true);
-	UNLOCK();
 	if (SUCCESS != rc) {
 		LE_ERROR("Unable to set Auto Reconnect to true - %d", rc);
 	}
+	UNLOCK();
 	return rc;
 }
 
@@ -422,7 +415,7 @@ int aws_Connect() {
  *
  * Objective		: Invokes internal API 'aws_iot_mqtt_publish' to publish any
  * 					  topic to MQTT broker
- * Return 			: None on success, halts execution in case of failure
+ * Return 			:
  * ================================================================================
  */
 int aws_Publish(const char* topic, const int topicLen, int32_t qosType,
@@ -434,11 +427,9 @@ int aws_Publish(const char* topic, const int topicLen, int32_t qosType,
 	paramsQOS1.payload = (void *) payload;
 	paramsQOS1.isRetained = 0;
 	paramsQOS1.payloadLen = payloadLen;
-	LOCK()
-	;
+	LOCK();
 	rc = aws_iot_mqtt_publish(&client, topic, topicLen, &paramsQOS1);
-	UNLOCK()
-	;
+	UNLOCK();
 	if (rc == MQTT_REQUEST_TIMEOUT_ERROR) {
 		LE_ERROR(
 				"QOS1 publish ack for activity record not received. Loss of connectivity.");
@@ -456,7 +447,7 @@ int aws_Publish(const char* topic, const int topicLen, int32_t qosType,
  * Return 			: None on success, halts execution in case of failure
  * ================================================================================
  */
-void iot_subscribe_callback_handler(AWS_IoT_Client *pClient, char *topicName,
+void _subscribeCallback(AWS_IoT_Client *pClient, char *topicName,
 		uint16_t topicNameLen, IoT_Publish_Message_Params *params, void *pData) {
 	IOT_UNUSED(pData);
 	IOT_UNUSED(pClient);
@@ -465,23 +456,25 @@ void iot_subscribe_callback_handler(AWS_IoT_Client *pClient, char *topicName,
 			(char * ) params->payload);
 }
 
-int aws_Yield(int32_t timeout) {
-	LE_DEBUG("====================Calling YIELD===========================");
-	IoT_Error_t rc = SUCCESS;
-	rc = aws_iot_mqtt_yield(&client, timeout);
-	if(rc!=SUCCESS) _stopThread();
-	else LE_ERROR("Failed to yield!");
-	return rc;
-}
-
-static void* _Yield(void* timeout) {
+/**
+ *
+ */
+static void* _yield(void* timeout) {
 	IoT_Error_t rc = SUCCESS;
 	int to = (int) timeout;
 	LE_DEBUG("YIELD with timeout: %d", to);
 	while (rc == SUCCESS && !unsubscribe) {
+		LE_DEBUG(
+				"====================Calling YIELD===========================");
+		IoT_Error_t rc = SUCCESS;
 		LOCK();
-		rc = aws_Yield(to);
+		rc = aws_iot_mqtt_yield(&client, to);
 		UNLOCK();
+		if (rc != SUCCESS) {
+			// Child yieldThread just exits so the main yieldThread can join with it.
+			LE_DEBUG("Yield thread exited.");
+			le_thread_Exit(NULL);
+		}
 	}
 	return NULL;
 }
@@ -490,56 +483,82 @@ static void* _Yield(void* timeout) {
  * Task  			:
  *
  * Objective		:
- * Return 			: None on success, halts execution in case of failure
+ * Return 			: None on success
  * ================================================================================
  */
-int aws_Subscribe(const char* sTopic, int32_t topicLen, int32_t qosType,
-		int32_t timeout) {
+int aws_Subscribe(const char* sTopic, int32_t topicLen, int32_t qosType) {
 	IoT_Error_t rc = FAILURE;
 	LE_DEBUG("Subscribing on topic : %s", sTopic);
 	LOCK();
 	rc = aws_iot_mqtt_subscribe(&client, sTopic, topicLen, qosType,
-			iot_subscribe_callback_handler, NULL);
+			_subscribeCallback, NULL);
 	UNLOCK();
+
+	// Mutex to avoid subscribe unsubscribe race condition
+	le_mutex_Lock(MutexSubscribe);
 	if (SUCCESS != rc) {
 		LE_ERROR("Error subscribing topic %s: \nErrorType(%d) = %s ", sTopic,
-				rc, GetErrorTypeFromCode(rc));
+				rc, _getErrorTypeFromCode(rc));
+	} else if (_numSubcribes == 0) {
+		unsubscribe = false;
+		yieldThread = le_thread_Create(sTopic, _yield, (void*) YIELD_TIMEOUT);
+		le_thread_SetJoinable(yieldThread);
+		le_thread_Start(yieldThread);
+		_numSubcribes++;
 	}
-	unsubscribe = false;
-	yieldThread = le_thread_Create(sTopic, _Yield, (void*) timeout);
-	le_thread_SetJoinable(yieldThread);
-	le_thread_Start(yieldThread);
+	le_mutex_Unlock(MutexSubscribe);
 	return rc;
-
 }
 
+/**
+ * Stop yield thread
+ */
+void _stopYieldThread() {
+	unsubscribe = true;
+	// Main yieldThread joins with the child before exiting the process.
+	LE_DEBUG("Waiting for Yield thread to finish..");
+	void* threadResult;
+	le_thread_Join(yieldThread, &threadResult);
+}
+
+/**
+ * Unsubscribe to a particular topic
+ */
 int aws_UnSubscribe(const char* sTopic, int32_t topicLen) {
 	IoT_Error_t rc = FAILURE;
 	LE_DEBUG("UnSubscribing on topic : %s", sTopic);
 	LOCK();
 	rc = aws_iot_mqtt_unsubscribe(&client, sTopic, topicLen);
 	UNLOCK();
+
+	// Mutex to avoid subscribe unsubscribe race condition
+	le_mutex_Lock(MutexSubscribe);
 	if (SUCCESS != rc) {
 		LE_ERROR("Error UnSubscribing topic %s: \nErrorType(%d) = %s ", sTopic,
-				rc, GetErrorTypeFromCode(rc));
+				rc, _getErrorTypeFromCode(rc));
+	} else if (--_numSubcribes <= 0) {
+		_stopYieldThread();
+		_numSubcribes = 0;
 	}
-	unsubscribe = true;
-	_stopThread();
+	le_mutex_Unlock(MutexSubscribe);
 	return rc;
 }
 
 COMPONENT_INIT {
+	Mutex = le_mutex_CreateNonRecursive("yieldMutex");
+	MutexSubscribe = le_mutex_CreateNonRecursive("subMutex");
+	_numSubcribes = 0;
+	/*============================================================*/
+	/* Initialize remote MQTT Connection*/
+	/*============================================================*/
+	// Initialize connection parameters.
+	_initConnectionParams(NULL, -1);
+	// Initialize TLS default parameters. Skip this step if TLS encryption not required
+	_initTlsParams(NULL, NULL, NULL, NULL);
+	// Initialize connection to the MQTT broker
+	_initConnection();
 
-	MainThread = le_thread_GetCurrent();
-	Mutex = le_mutex_CreateNonRecursive("mutex");
-	/* ============================================================*/
-	/*Initialize remote MQTT Connection*/
-	/* ============================================================*/
-	//Initialize connection parameters.
-	aws_InitConnectionParams(NULL, -1);
-	//Initialize TLS default parameters. Skip this step if TLS encryption not required
-	aws_InitTlsParams(NULL, NULL, NULL, NULL);
-	//Initialize connection to the MQTT broker
-	aws_Init();
+
+
 }
 

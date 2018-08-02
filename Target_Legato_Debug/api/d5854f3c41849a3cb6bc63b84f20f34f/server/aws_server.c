@@ -307,187 +307,6 @@ void aws_AdvertiseService
 //--------------------------------------------------------------------------------------------------
 
 
-static void Handle_aws_InitConnectionParams
-(
-    le_msg_MessageRef_t _msgRef
-
-)
-{
-    // Get the message buffer pointer
-    __attribute__((unused)) uint8_t* _msgBufPtr =
-        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
-
-    // Needed if we are returning a result or output values
-    uint8_t* _msgBufStartPtr = _msgBufPtr;
-
-    // Unpack which outputs are needed
-
-    // Unpack the input parameters from the message
-    char host[257];
-    if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
-                               host,
-                               sizeof(host),
-                               256 ))
-    {
-        goto error_unpack;
-    }
-    int32_t port;
-    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize,
-                                               &port ))
-    {
-        goto error_unpack;
-    }
-
-    // Define storage for output parameters
-
-    // Call the function
-    aws_InitConnectionParams ( 
-        host, 
-        port );
-
-    // Re-use the message buffer for the response
-    _msgBufPtr = _msgBufStartPtr;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack any "out" parameters
-
-    // Return the response
-    TRACE("Sending response to client session %p : %ti bytes sent",
-          le_msg_GetSession(_msgRef),
-          _msgBufPtr-_msgBufStartPtr);
-
-
-    le_msg_Respond(_msgRef);
-
-    return;
-
-error_unpack:
-    LE_KILL_CLIENT("Error unpacking message");
-}
-
-
-static void Handle_aws_InitTlsParams
-(
-    le_msg_MessageRef_t _msgRef
-
-)
-{
-    // Get the message buffer pointer
-    __attribute__((unused)) uint8_t* _msgBufPtr =
-        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
-
-    // Needed if we are returning a result or output values
-    uint8_t* _msgBufStartPtr = _msgBufPtr;
-
-    // Unpack which outputs are needed
-
-    // Unpack the input parameters from the message
-    char certDir[257];
-    if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
-                               certDir,
-                               sizeof(certDir),
-                               256 ))
-    {
-        goto error_unpack;
-    }
-    char rootCA[257];
-    if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
-                               rootCA,
-                               sizeof(rootCA),
-                               256 ))
-    {
-        goto error_unpack;
-    }
-    char cert[257];
-    if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
-                               cert,
-                               sizeof(cert),
-                               256 ))
-    {
-        goto error_unpack;
-    }
-    char privateKey[257];
-    if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
-                               privateKey,
-                               sizeof(privateKey),
-                               256 ))
-    {
-        goto error_unpack;
-    }
-
-    // Define storage for output parameters
-
-    // Call the function
-    aws_InitTlsParams ( 
-        certDir, 
-        rootCA, 
-        cert, 
-        privateKey );
-
-    // Re-use the message buffer for the response
-    _msgBufPtr = _msgBufStartPtr;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack any "out" parameters
-
-    // Return the response
-    TRACE("Sending response to client session %p : %ti bytes sent",
-          le_msg_GetSession(_msgRef),
-          _msgBufPtr-_msgBufStartPtr);
-
-
-    le_msg_Respond(_msgRef);
-
-    return;
-
-error_unpack:
-    LE_KILL_CLIENT("Error unpacking message");
-}
-
-
-static void Handle_aws_Init
-(
-    le_msg_MessageRef_t _msgRef
-
-)
-{
-    // Get the message buffer pointer
-    __attribute__((unused)) uint8_t* _msgBufPtr =
-        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
-
-    // Needed if we are returning a result or output values
-    uint8_t* _msgBufStartPtr = _msgBufPtr;
-
-    // Unpack which outputs are needed
-
-    // Unpack the input parameters from the message
-
-    // Define storage for output parameters
-
-    // Call the function
-    aws_Init (  );
-
-    // Re-use the message buffer for the response
-    _msgBufPtr = _msgBufStartPtr;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack any "out" parameters
-
-    // Return the response
-    TRACE("Sending response to client session %p : %ti bytes sent",
-          le_msg_GetSession(_msgRef),
-          _msgBufPtr-_msgBufStartPtr);
-
-
-    le_msg_Respond(_msgRef);
-
-    return;
-}
-
-
 static void Handle_aws_Connect
 (
     le_msg_MessageRef_t _msgRef
@@ -657,12 +476,6 @@ static void Handle_aws_Subscribe
     {
         goto error_unpack;
     }
-    int32_t timeout;
-    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize,
-                                               &timeout ))
-    {
-        goto error_unpack;
-    }
 
     // Define storage for output parameters
 
@@ -671,8 +484,7 @@ static void Handle_aws_Subscribe
     _result  = aws_Subscribe ( 
         topic, 
         topicLen, 
-        qosType, 
-        timeout );
+        qosType );
 
     // Re-use the message buffer for the response
     _msgBufPtr = _msgBufStartPtr;
@@ -807,61 +619,6 @@ static void Handle_aws_disconnect
 }
 
 
-static void Handle_aws_Yield
-(
-    le_msg_MessageRef_t _msgRef
-
-)
-{
-    // Get the message buffer pointer
-    __attribute__((unused)) uint8_t* _msgBufPtr =
-        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
-
-    // Needed if we are returning a result or output values
-    uint8_t* _msgBufStartPtr = _msgBufPtr;
-
-    // Unpack which outputs are needed
-
-    // Unpack the input parameters from the message
-    int32_t timeout;
-    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize,
-                                               &timeout ))
-    {
-        goto error_unpack;
-    }
-
-    // Define storage for output parameters
-
-    // Call the function
-    int32_t _result;
-    _result  = aws_Yield ( 
-        timeout );
-
-    // Re-use the message buffer for the response
-    _msgBufPtr = _msgBufStartPtr;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack the result first
-    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize, _result ));
-
-    // Pack any "out" parameters
-
-    // Return the response
-    TRACE("Sending response to client session %p : %ti bytes sent",
-          le_msg_GetSession(_msgRef),
-          _msgBufPtr-_msgBufStartPtr);
-
-
-    le_msg_Respond(_msgRef);
-
-    return;
-
-error_unpack:
-    LE_KILL_CLIENT("Error unpacking message");
-}
-
-
 static void ServerMsgRecvHandler
 (
     le_msg_MessageRef_t msgRef,
@@ -879,15 +636,11 @@ static void ServerMsgRecvHandler
     // Dispatch to appropriate message handler and get response
     switch (msgPtr->id)
     {
-        case _MSGID_aws_InitConnectionParams : Handle_aws_InitConnectionParams(msgRef); break;
-        case _MSGID_aws_InitTlsParams : Handle_aws_InitTlsParams(msgRef); break;
-        case _MSGID_aws_Init : Handle_aws_Init(msgRef); break;
         case _MSGID_aws_Connect : Handle_aws_Connect(msgRef); break;
         case _MSGID_aws_Publish : Handle_aws_Publish(msgRef); break;
         case _MSGID_aws_Subscribe : Handle_aws_Subscribe(msgRef); break;
         case _MSGID_aws_UnSubscribe : Handle_aws_UnSubscribe(msgRef); break;
         case _MSGID_aws_disconnect : Handle_aws_disconnect(msgRef); break;
-        case _MSGID_aws_Yield : Handle_aws_Yield(msgRef); break;
 
         default: LE_ERROR("Unknowm msg id = %i", msgPtr->id);
     }

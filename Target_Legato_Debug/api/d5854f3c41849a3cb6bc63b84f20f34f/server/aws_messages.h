@@ -15,7 +15,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "3d0c7e069dd5c0bc98800a83b8761b70"
+#define PROTOCOL_ID_STR "23b97d86b38a1ba61e4edb4ec6cb6eef"
 
 #ifdef MK_TOOLS_BUILD
     extern const char** aws_ServiceInstanceNamePtr;
@@ -25,7 +25,7 @@
 #endif
 
 
-#define _MAX_MSG_SIZE 1048
+#define _MAX_MSG_SIZE 544
 
 // Define the message type for communicating between client and server
 typedef struct __attribute__((packed))
@@ -35,15 +35,11 @@ typedef struct __attribute__((packed))
 }
 _Message_t;
 
-#define _MSGID_aws_InitConnectionParams 0
-#define _MSGID_aws_InitTlsParams 1
-#define _MSGID_aws_Init 2
-#define _MSGID_aws_Connect 3
-#define _MSGID_aws_Publish 4
-#define _MSGID_aws_Subscribe 5
-#define _MSGID_aws_UnSubscribe 6
-#define _MSGID_aws_disconnect 7
-#define _MSGID_aws_Yield 8
+#define _MSGID_aws_Connect 0
+#define _MSGID_aws_Publish 1
+#define _MSGID_aws_Subscribe 2
+#define _MSGID_aws_UnSubscribe 3
+#define _MSGID_aws_disconnect 4
 
 
 #endif // AWS_MESSAGES_H_INCLUDE_GUARD

@@ -72,5 +72,6 @@
 #define DISABLE_METRICS false ///< Disable the collection of metrics by setting this to true
 
 #define RADIO_TOPIC "versat/radio"
+#define YIELD_TIMEOUT 2000
 
 #endif /* SRC_JOBS_IOT_JOB_CONFIG_H_ */
