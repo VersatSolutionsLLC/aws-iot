@@ -480,26 +480,29 @@ void iot_subscribe_callback_handler(AWS_IoT_Client *pClient, char *topicName,
 		uint16_t topicNameLen, IoT_Publish_Message_Params *params, void *pData) {
 	IOT_UNUSED(pData);
 	IOT_UNUSED(pClient);
-	LE_INFO("Got Published message, Topic Name : %.*s\tPayload : %.*s",
+	LE_DEBUG("Got Published message, Topic Name : %.*s\tPayload : %.*s",
 			topicNameLen, topicName, (int ) params->payloadLen,
 			(char * ) params->payload);
 }
 
 int aws_Yield(int32_t timeout) {
-	LE_INFO("Calling YIELD===========================");
-	return aws_iot_mqtt_yield(&client, timeout);
+	LE_DEBUG("====================Calling YIELD===========================");
+	IoT_Error_t rc = SUCCESS;
+	rc = aws_iot_mqtt_yield(&client, timeout);
+	if(rc!=SUCCESS) _stopThread();
+	else LE_ERROR("Failed to yield!");
+	return rc;
 }
 
 static void* _Yield(void* timeout) {
 	IoT_Error_t rc = SUCCESS;
 	int to = (int) timeout;
-	LE_INFO("YIELD with timeout: %d", to);
+	LE_DEBUG("YIELD with timeout: %d", to);
 	while (rc == SUCCESS && !unsubscribe) {
 		LOCK();
 		rc = aws_Yield(to);
 		UNLOCK();
 	}
-	_stopThread();
 	return NULL;
 }
 
