@@ -2,10 +2,14 @@
 #include "interfaces.h"
 
 char previousParams[1024];
+const char* _FRM_JSON = "{\"temp\":%s,\"%s\":%s,\"timestamp\":%d}";
+const char* _FRM_JSON_GSM = "{\"rssi\":%s,\"ber\":%s}";
+const char* _FRM_JSON_LTE =
+		"{\"rssi\":%s,\"rsrp\":%s,\"rsrq\":%s,\"snr\":%s,\"bler\":%s}";
 /**
  * Split string
  */
-char** str_split(char* a_str, const char a_delim) {
+char** _strSplit(char* a_str, const char a_delim) {
 	char** result = 0;
 	size_t count = 0;
 	char* tmp = a_str;
@@ -49,15 +53,16 @@ char** str_split(char* a_str, const char a_delim) {
 }
 
 //returns lenght of json
-int getRadioJson(char* json, const int jsonLength) {
+int _getRadioJson(char* json, const int jsonLength) {
 	char params[1024];
+	char radioJson[1024];
 	radio_Info(params, 1024);
 	if (strcmp(previousParams, params) == 0) {
 		strcpy(previousParams, params);
 		return 0;
 	}
 	strcpy(previousParams, params);
-	char** tokens = str_split(params, ',');
+	char** tokens = _strSplit(params, ',');
 	int temperature = 1;
 	int rssi = 2;
 
@@ -75,26 +80,15 @@ int getRadioJson(char* json, const int jsonLength) {
 	int cmpLTE = strcmp(rat, "LTE");
 
 	if (cmpGSM == 0) {
-		snprintf(json, jsonLength,
-				"{\"temp\":%s,\"rat\":\"%s\",\"rssi\":%s,\"ber\":%s,\"timestamp\":%d}",
-				*(tokens + temperature), rat, *(tokens + rssi), *(tokens + ber),
-				timestamp);
-		free(*(tokens + temperature));
-		free(*(tokens + rssi));
-		free(*(tokens + ber));
+		snprintf(radioJson, jsonLength, _FRM_JSON_GSM, *(tokens + rssi),
+				*(tokens + ber));
 	} else if (cmpLTE == 0) {
-		snprintf(json, jsonLength,
-				"{\"temp\":%s,\"rat\":\"%s\",\"rssi\":%s,\"rsrp\":%s,\"rsrq\":%s,\"snr\":%s,\"bler\":%s,\"timestamp\":%d}",
-				*(tokens + temperature), rat, *(tokens + rssi),
+		snprintf(radioJson, jsonLength, _FRM_JSON_LTE, *(tokens + rssi),
 				*(tokens + rsrp), *(tokens + rsrq), *(tokens + snr),
-				*(tokens + bler), timestamp);
-		free(*(tokens + temperature));
-		free(*(tokens + rssi));
-		free(*(tokens + bler));
-		free(*(tokens + rsrp));
-		free(*(tokens + rsrp));
-		free(*(tokens + snr));
+				*(tokens + bler));
 	}
+	if (json != NULL)
+		snprintf(json, jsonLength, _FRM_JSON, *(tokens+temperature),rat,radioJson,timestamp);
 	free(tokens);
 	return strlen(json);
 }
@@ -109,14 +103,13 @@ COMPONENT_INIT {
 
 	aws_Connect();
 	char json[1024];
-	char prevJson[1024];
 
 	int rc = 0;
 
 	/*Publish topic to MQTT client*/
 	int l = 5;
 	while (rc == 0) {
-		int32_t jsonLen = getRadioJson(json, 1024);
+		int32_t jsonLen = _getRadioJson(json, 1024);
 		//Skipping publish for identical data.
 		if (jsonLen == 0) {
 			LE_DEBUG("Nothing to publish! Skipping...");
@@ -126,7 +119,6 @@ COMPONENT_INIT {
 		rc = aws_Publish(topic, topicLen, qosType, json, jsonLen);
 		LE_INFO("Published, Topic:%s, Qos: %d, Payload: %s", topic, qosType,
 				json);
-		strcpy(prevJson, json);
 		sleep(l);
 	}
 }

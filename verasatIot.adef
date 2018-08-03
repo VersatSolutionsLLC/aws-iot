@@ -35,7 +35,6 @@ processes:
 		( radio )
 		( publish )
 	}
-	faultAction: restart
 	maxCoreDumpFileBytes: 512K
 	maxFileBytes: 512K
 }
