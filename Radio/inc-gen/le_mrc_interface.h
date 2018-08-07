@@ -332,6 +332,32 @@
  * A sample code can be seen in the following page:
  * - @subpage c_mrcNeighborCells
  *
+ * @section le_mrc_jamming Jamming detection
+ *
+ * The jamming detection algorithm is based on power measurements and cell synchronization actions
+ * performed during a GSM network scan procedure.
+ * During this procedure some intermediate results are reported, that allows user to take some
+ * preventive actions if necessary.
+ * This result is reported as a jammed state probability. See @ref le_mrc_JammingStatus_t
+ * enumeration for probability description.
+ * Each time the jamming status changes during the scan procedure, it is reported to the user.
+ * See @ref le_mrc_JammingReport_t enumeration for details.
+ *
+ * The jamming status is reported:
+ * - In an unsolicited way, each time the protocol stack initiates a scan for PLMN selection or
+ * reselection.
+ * - On user demand, when a user PLMN scan is performed.
+ *
+ * Call le_mrc_StartJammingDetection() to launch jamming monitoring.
+ * By registering a handler by calling le_mrc_AddJammingDetectionEventHandler(), the notification
+ * on jamming detection can be sent to the registered application.
+ *
+ * For each jamming detection monitoring, the following APIs can be called:
+ * - le_mrc_StartJammingDetection() to start the jamming monitoring.
+ * - le_mrc_StopJammingDetection() to stop the jamming monitoring.
+ * - le_mrc_AddJammingDetectionEventHandler() to register an event handler.
+ * - le_mrc_RemoveJammingDetectionEventHandler() to remove an event handler.
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
@@ -752,6 +778,56 @@ le_mrc_Rat_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Jamming detection report type enum
+ *
+ * @note If the reported status is the final status (end of the procedure), this shall be indicated
+ * within the status report.
+ * @note Other reports, called intermediate reports, gives only intermediate results issuing from
+ * the algorithm
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_MRC_JAMMING_REPORT_FINAL = 0,
+        ///< Final jamming status report
+    LE_MRC_JAMMING_REPORT_INTERMEDIATE = 1
+        ///< Intermediate jamming status report
+}
+le_mrc_JammingReport_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Jamming detection status type enum
+ *
+ * @note The final status can be only NULL or JAMMED.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_MRC_JAMMING_STATUS_UNKNOWN = 0,
+        ///< Status is unknown
+    LE_MRC_JAMMING_STATUS_NULL = 1,
+        ///< No jamming suspicion; radio environment is considered normal
+    LE_MRC_JAMMING_STATUS_LOW = 2,
+        ///< Low probability that the device is jammed, but some radio
+        ///< environment parameters are considered abnormal
+    LE_MRC_JAMMING_STATUS_MEDIUM = 3,
+        ///< Medium probability that the device is jammed; a lot of
+        ///< interferences in the radio spectrum
+    LE_MRC_JAMMING_STATUS_HIGH = 4,
+        ///< High probability that the device is jammed; radio environment is
+        ///< considered jammed, but there is still a possibility that the module
+        ///< succeeds in synchronizing a cell
+    LE_MRC_JAMMING_STATUS_JAMMED = 5
+        ///< Module is jammed; cell synchronization impossible while sufficient
+        ///< power level is detected on a large number of frequencies
+}
+le_mrc_JammingStatus_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Radio Bitmask Access Technology Bit Mask
  */
 //--------------------------------------------------------------------------------------------------
@@ -806,6 +882,14 @@ typedef struct le_mrc_SignalStrengthChangeHandler* le_mrc_SignalStrengthChangeHa
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct le_mrc_NetworkRejectHandler* le_mrc_NetworkRejectHandlerRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type used by Add/Remove functions for EVENT 'le_mrc_JammingDetectionEvent'
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_mrc_JammingDetectionEventHandler* le_mrc_JammingDetectionEventHandlerRef_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -908,6 +992,21 @@ typedef void (*le_mrc_NetworkRejectHandlerFunc_t)
         ///< Mobile Network Code
     le_mrc_Rat_t rat,
         ///< Radio Access Technology.
+    void* contextPtr
+        ///<
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for jamming detection event.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*le_mrc_JammingDetectionHandlerFunc_t)
+(
+    le_mrc_JammingReport_t report,
+        ///< Report type.
+    le_mrc_JammingStatus_t status,
+        ///< Jamming detection status.
     void* contextPtr
         ///<
 );
@@ -1272,8 +1371,9 @@ le_result_t le_mrc_GetBandPreferences
  * Set the LTE Band preferences by using a bit mask.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_FAULT        Function failed.
+ *  - LE_OK           Function succeeded.
+ *  - LE_UNSUPPORTED  The platform doesn't support setting LTE Band preferences.
  *
  * @note <b>NOT multi-app safe</b>
  */
@@ -2398,6 +2498,66 @@ void le_mrc_RemoveNetworkRejectHandler
 (
     le_mrc_NetworkRejectHandlerRef_t handlerRef
         ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'le_mrc_JammingDetectionEvent'
+ *
+ * This event provides information on jamming detection.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_JammingDetectionEventHandlerRef_t le_mrc_AddJammingDetectionEventHandler
+(
+    le_mrc_JammingDetectionHandlerFunc_t handlerPtr,
+        ///< [IN]
+    void* contextPtr
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'le_mrc_JammingDetectionEvent'
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_RemoveJammingDetectionEventHandler
+(
+    le_mrc_JammingDetectionEventHandlerRef_t handlerRef
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the jamming detection monitoring.
+ *
+ * @warning The jamming detection feature might be limited by the platform.
+ *          Please refer to the platform documentation @ref platformConstraintsMdc.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
+ *      - LE_DUPLICATE      The feature is already activated and an activation is requested.
+ *      - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_StartJammingDetection
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop the jamming detection monitoring.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
+ *      - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_StopJammingDetection
+(
+    void
 );
 
 #endif // LE_MRC_INTERFACE_H_INCLUDE_GUARD

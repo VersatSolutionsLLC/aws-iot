@@ -13,6 +13,7 @@ extern "C" {
 
 #include "aws_interface.h"
 #include "radio_interface.h"
+#include "gps_interface.h"
 
 #ifdef __cplusplus
 }

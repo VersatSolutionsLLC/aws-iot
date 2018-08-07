@@ -18,6 +18,9 @@ void aws_ConnectService(void);
 extern const char* _PublishRadio_radio_ServiceInstanceName;
 const char** radio_ServiceInstanceNamePtr = &_PublishRadio_radio_ServiceInstanceName;
 void radio_ConnectService(void);
+extern const char* _PublishRadio_gps_ServiceInstanceName;
+const char** gps_ServiceInstanceNamePtr = &_PublishRadio_gps_ServiceInstanceName;
+void gps_ConnectService(void);
 // Component log session variables.
 le_log_SessionRef_t PublishRadio_LogSession;
 le_log_Level_t* PublishRadio_LogLevelFilterPtr;
@@ -34,6 +37,7 @@ __attribute__((constructor)) void _PublishRadio_Init(void)
     // Connect client-side IPC interfaces.
     aws_ConnectService();
     radio_ConnectService();
+    gps_ConnectService();
 
     // Register the component with the Log Daemon.
     PublishRadio_LogSession = log_RegComponent("PublishRadio", &PublishRadio_LogLevelFilterPtr);

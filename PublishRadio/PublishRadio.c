@@ -2,10 +2,13 @@
 #include "interfaces.h"
 
 char previousParams[1024];
-const char* _FRM_JSON = "{\"temp\":%s,\"%s\":%s,\"timestamp\":%d}";
+const char* _FRM_JSON = "{\"temp\":%s,\"%s\":%s,\"timestamp\":%d,\"loc\":%s}";
 const char* _FRM_JSON_GSM = "{\"rssi\":%s,\"ber\":%s}";
 const char* _FRM_JSON_LTE =
 		"{\"rssi\":%s,\"rsrp\":%s,\"rsrq\":%s,\"snr\":%s,\"bler\":%s}";
+const char* _FRM_JSON_LOC =
+		"{\"lat\":%s,\"lon\":%s,\"alt\":%s,\"altWgs84\":%s,\"hAcc\":%s,\"vAcc\":%s}";
+
 /**
  * Split string
  */
@@ -53,9 +56,11 @@ char** _strSplit(char* a_str, const char a_delim) {
 }
 
 //returns lenght of json
-int _getRadioJson(char* json, const int jsonLength) {
+int _getJson(char* json, const int jsonLength) {
 	char params[1024];
 	char radioJson[1024];
+	char locationJson[1024];
+
 	radio_Info(params, 1024);
 	if (strcmp(previousParams, params) == 0) {
 		strcpy(previousParams, params);
@@ -87,9 +92,26 @@ int _getRadioJson(char* json, const int jsonLength) {
 				*(tokens + rsrp), *(tokens + rsrq), *(tokens + snr),
 				*(tokens + bler));
 	}
-	if (json != NULL)
-		snprintf(json, jsonLength, _FRM_JSON, *(tokens+temperature),rat,radioJson,timestamp);
 	free(tokens);
+
+	int lat = 0;
+	int lon = 1;
+	int alt = 2;
+	int altWgs84 = 3;
+	int hAcc = 4;
+	int vAcc = 5;
+
+	gps_GetLocation(params, 1024);
+	char**  gpsTokens = _strSplit(params, ',');
+	snprintf(locationJson, jsonLength, _FRM_JSON_LOC, *(gpsTokens + lat),
+			*(gpsTokens + lon), *(gpsTokens + alt), *(gpsTokens + altWgs84),
+			*(gpsTokens + hAcc), *(gpsTokens + vAcc));
+
+	if (json != NULL)
+		snprintf(json, jsonLength, _FRM_JSON, *(tokens + temperature), rat,
+				radioJson, timestamp, locationJson);
+
+	free(gpsTokens);
 	return strlen(json);
 }
 
@@ -109,7 +131,7 @@ COMPONENT_INIT {
 	/*Publish topic to MQTT client*/
 	int l = 5;
 	while (rc == 0) {
-		int32_t jsonLen = _getRadioJson(json, 1024);
+		int32_t jsonLen = _getJson(json, 1024);
 		//Skipping publish for identical data.
 		if (jsonLen == 0) {
 			LE_DEBUG("Nothing to publish! Skipping...");

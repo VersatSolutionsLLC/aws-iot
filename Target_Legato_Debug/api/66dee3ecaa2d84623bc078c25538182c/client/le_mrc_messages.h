@@ -15,7 +15,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "b1b9b58c3b26f0d4bfd41a7b6856e5cd"
+#define PROTOCOL_ID_STR "81a3a47c7cf1d1100eb275e46676f390"
 
 #ifdef MK_TOOLS_BUILD
     extern const char** le_mrc_ServiceInstanceNamePtr;
@@ -111,6 +111,10 @@ _Message_t;
 #define _MSGID_le_mrc_GetTdScdmaBandCapabilities 73
 #define _MSGID_le_mrc_AddNetworkRejectHandler 74
 #define _MSGID_le_mrc_RemoveNetworkRejectHandler 75
+#define _MSGID_le_mrc_AddJammingDetectionEventHandler 76
+#define _MSGID_le_mrc_RemoveJammingDetectionEventHandler 77
+#define _MSGID_le_mrc_StartJammingDetection 78
+#define _MSGID_le_mrc_StopJammingDetection 79
 
 
 #endif // LE_MRC_MESSAGES_H_INCLUDE_GUARD

@@ -13,6 +13,7 @@ extern "C" {
 
 #include "api/d5854f3c41849a3cb6bc63b84f20f34f/client/aws_interface.h"
 #include "api/d0d5a81add26997f61e8048f43fd9ea4/client/radio_interface.h"
+#include "api/48c3177d36d47d9a81b687879d76b95b/client/gps_interface.h"
 
 #ifdef __cplusplus
 }

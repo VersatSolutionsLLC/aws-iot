@@ -1,0 +1,18 @@
+sources:
+{
+	Gps.c
+}
+provides:
+{
+    api:
+    {
+        gps = Gps/gps.api
+    }
+}
+requires:
+{
+    api:
+    {
+        positioning/le_gnss.api
+    }
+}

@@ -8,5 +8,6 @@ requires:
     {
         AwsComponent/aws.api
         Radio/radio.api
+        Gps/gps.api
     }
 }

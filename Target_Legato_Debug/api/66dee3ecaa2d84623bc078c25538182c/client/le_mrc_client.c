@@ -131,6 +131,8 @@ static pthread_mutex_t InitMutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" 
  * Trace reference used for controlling tracing in this module.
  */
 //--------------------------------------------------------------------------------------------------
+#if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
+
 static le_log_TraceRef_t TraceRef;
 
 /// Macro used to generate trace output in this module.
@@ -139,6 +141,13 @@ static le_log_TraceRef_t TraceRef;
 
 /// Macro used to query current trace state in this module
 #define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
+
+#else
+
+#define TRACE(...)
+#define IS_TRACE_ENABLED 0
+
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -169,8 +178,10 @@ static le_result_t InitClientForThread
     bool isBlocking
 )
 {
+#if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("ipc");
+#endif
 
     // Open a session.
     le_msg_ProtocolRef_t protocolRef;
@@ -2645,8 +2656,9 @@ error_unpack:
  * Set the LTE Band preferences by using a bit mask.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_FAULT        Function failed.
+ *  - LE_OK           Function succeeded.
+ *  - LE_UNSUPPORTED  The platform doesn't support setting LTE Band preferences.
  *
  * @note <b>NOT multi-app safe</b>
  */
@@ -7772,6 +7784,405 @@ void le_mrc_RemoveNetworkRejectHandler
 }
 
 
+// This function parses the message buffer received from the server, and then calls the user
+// registered handler, which is stored in a client data object.
+static void _Handle_le_mrc_AddJammingDetectionEventHandler
+(
+    void* _reportPtr,
+    void* _dataPtr
+)
+{
+    le_msg_MessageRef_t _msgRef = _reportPtr;
+    _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    uint8_t* _msgBufPtr = _msgPtr->buffer;
+    size_t _msgBufSize = _MAX_MSG_SIZE;
+
+    // The clientContextPtr always exists and is always first. It is a safe reference to the client
+    // data object, but we already get the pointer to the client data object through the _dataPtr
+    // parameter, so we don't need to do anything with clientContextPtr, other than unpacking it.
+    void* _clientContextPtr;
+    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize,
+                                  &_clientContextPtr ))
+    {
+        goto error_unpack;
+    }
+
+    // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
+    // and check for NULL has already been done when this function is queued.
+    _ClientData_t* _clientDataPtr = _dataPtr;
+
+    // Pull out additional data from the client data pointer
+    le_mrc_JammingDetectionHandlerFunc_t _handlerRef_le_mrc_AddJammingDetectionEventHandler = (le_mrc_JammingDetectionHandlerFunc_t)_clientDataPtr->handlerPtr;
+    void* contextPtr = _clientDataPtr->contextPtr;
+
+    // Unpack the remaining parameters
+    le_mrc_JammingReport_t report;
+    if (!le_pack_UnpackUint32( &_msgBufPtr, &_msgBufSize,
+                                               &report ))
+    {
+        goto error_unpack;
+    }
+    le_mrc_JammingStatus_t status;
+    if (!le_pack_UnpackUint32( &_msgBufPtr, &_msgBufSize,
+                                               &status ))
+    {
+        goto error_unpack;
+    }
+
+    // Call the registered handler
+    if ( _handlerRef_le_mrc_AddJammingDetectionEventHandler != NULL )
+    {
+        _handlerRef_le_mrc_AddJammingDetectionEventHandler(report, status, contextPtr );
+    }
+    else
+    {
+        LE_FATAL("Error in client data: no registered handler");
+    }
+
+    // Release the message, now that we are finished with it.
+    le_msg_ReleaseMsg(_msgRef);
+
+    return;
+
+error_unpack:
+    // Handle any unpack errors by dying -- server should not be sending invalid data; if it is
+    // something is seriously wrong.
+    LE_FATAL("Error unpacking message");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'le_mrc_JammingDetectionEvent'
+ *
+ * This event provides information on jamming detection.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_JammingDetectionEventHandlerRef_t le_mrc_AddJammingDetectionEventHandler
+(
+    le_mrc_JammingDetectionHandlerFunc_t handlerPtr,
+        ///< [IN]
+    void* contextPtr
+        ///< [IN]
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_mrc_JammingDetectionEventHandlerRef_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_mrc_AddJammingDetectionEventHandler;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+    // The handlerPtr and contextPtr input parameters are stored in the client
+    // data object, and it is a safe reference to this object that is passed down
+    // as the context pointer.  The handlerPtr is not passed down.
+    // Create a new client data object and fill it in
+    _ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
+    _clientDataPtr->handlerPtr = (le_event_HandlerFunc_t)handlerPtr;
+    _clientDataPtr->contextPtr = contextPtr;
+    _clientDataPtr->callersThreadRef = le_thread_GetCurrent();
+    // Create a safeRef to be passed down as the contextPtr
+    _LOCK
+    contextPtr = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
+    _UNLOCK
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize, contextPtr ));
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    if (_result)
+    {
+        // Put the handler reference result into the client data object, and
+        // then return a safe reference to the client data object as the reference;
+        // this safe reference is contained in the contextPtr, which was assigned
+        // when the client data object was created.
+        _clientDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
+        _result = contextPtr;
+    }
+    else
+    {
+        // Add failed, release the client data.
+        le_mem_Release(_clientDataPtr);
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'le_mrc_JammingDetectionEvent'
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_RemoveJammingDetectionEventHandler
+(
+    le_mrc_JammingDetectionEventHandlerRef_t handlerRef
+        ///< [IN]
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_mrc_RemoveJammingDetectionEventHandler;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+    // The passed in handlerRef is a safe reference for the client data object.  Need to get the
+    // real handlerRef from the client data object and then delete both the safe reference and
+    // the object since they are no longer needed.
+    _LOCK
+    _ClientData_t* clientDataPtr = le_ref_Lookup(_HandlerRefMap, handlerRef);
+    LE_FATAL_IF(clientDataPtr==NULL, "Invalid reference");
+    le_ref_DeleteRef(_HandlerRefMap, handlerRef);
+    _UNLOCK
+    handlerRef = (le_mrc_JammingDetectionEventHandlerRef_t)clientDataPtr->handlerRef;
+    le_mem_Release(clientDataPtr);
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize,
+                                     handlerRef ));
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+    return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the jamming detection monitoring.
+ *
+ * @warning The jamming detection feature might be limited by the platform.
+ *          Please refer to the platform documentation @ref platformConstraintsMdc.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
+ *      - LE_DUPLICATE      The feature is already activated and an activation is requested.
+ *      - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_StartJammingDetection
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_result_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_mrc_StartJammingDetection;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackResult( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop the jamming detection monitoring.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
+ *      - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_StopJammingDetection
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_result_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_mrc_StopJammingDetection;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackResult( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
 static void ClientIndicationRecvHandler
 (
     le_msg_MessageRef_t  msgRef,
@@ -7830,6 +8241,9 @@ static void ClientIndicationRecvHandler
             break;
         case _MSGID_le_mrc_AddNetworkRejectHandler :
             le_event_QueueFunctionToThread(callersThreadRef, _Handle_le_mrc_AddNetworkRejectHandler, msgRef, clientDataPtr);
+            break;
+        case _MSGID_le_mrc_AddJammingDetectionEventHandler :
+            le_event_QueueFunctionToThread(callersThreadRef, _Handle_le_mrc_AddJammingDetectionEventHandler, msgRef, clientDataPtr);
             break;
 
         default:

@@ -131,6 +131,8 @@ static pthread_mutex_t InitMutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" 
  * Trace reference used for controlling tracing in this module.
  */
 //--------------------------------------------------------------------------------------------------
+#if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
+
 static le_log_TraceRef_t TraceRef;
 
 /// Macro used to generate trace output in this module.
@@ -139,6 +141,13 @@ static le_log_TraceRef_t TraceRef;
 
 /// Macro used to query current trace state in this module
 #define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
+
+#else
+
+#define TRACE(...)
+#define IS_TRACE_ENABLED 0
+
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -169,8 +178,10 @@ static le_result_t InitClientForThread
     bool isBlocking
 )
 {
+#if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("ipc");
+#endif
 
     // Open a session.
     le_msg_ProtocolRef_t protocolRef;

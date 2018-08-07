@@ -11,6 +11,7 @@
 // Define IPC API interface names.
 LE_SHARED const char* _PublishRadio_aws_ServiceInstanceName = "publish.PublishRadio.aws";
 LE_SHARED const char* _PublishRadio_radio_ServiceInstanceName = "publish.PublishRadio.radio";
+LE_SHARED const char* _PublishRadio_gps_ServiceInstanceName = "publish.PublishRadio.gps";
 
 // Define default component's log session variables.
 LE_SHARED le_log_SessionRef_t publish_exe_LogSession;
