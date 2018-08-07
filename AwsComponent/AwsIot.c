@@ -12,14 +12,18 @@
 #include "aws_iot_version.h"
 #include "aws_iot_mqtt_client_interface.h"
 #include "aws_iot_shadow_interface.h"
+#include "test_AwsIot.h"
 
 #define HOST_ADDRESS_SIZE 255
+#define AWS_IOT_SUBSCRIBE_THREAD_NAME "aws_subs_thread"
 
+void _stopYieldThread();
 static int _numSubcribes;
 
 static bool unsubscribe = false;
 
 static le_thread_Ref_t yieldThread;
+//static le_log_TraceRef_t TraceRef;
 
 // Mutex used to prevent races between the threads.
 static le_mutex_Ref_t Mutex;
@@ -28,7 +32,7 @@ static le_mutex_Ref_t MutexSubscribe;
 #define UNLOCK()    le_mutex_Unlock(Mutex)
 
 static AWS_IoT_Client client;
-
+void _stopYieldThread();
 typedef struct {
 	char rootCA[PATH_MAX + 1];
 	char clientCrt[PATH_MAX + 1];
@@ -44,16 +48,6 @@ typedef struct {
 
 TLSParams tlsParams;
 ConnectionParams connectionParams;
-/**
- * Stop yield thread
- */
-void _stopYieldThread() {
-	unsubscribe = true;
-	// Main yieldThread joins with the child before exiting the process.
-	LE_DEBUG("Waiting for Yield thread to finish..");
-	void* threadResult;
-	le_thread_Join(yieldThread, &threadResult);
-}
 
 /**
  * Initialize TLS connection parameters. If called with empty parameters, it uses the values defined in the
@@ -235,7 +229,6 @@ ClientState _getConnectionState() {
 	//LE_DEBUG("\nIn aws_getConnState: Client State = %s \(%d\)",ClientState,clientState);
 	UNLOCK();
 	FUNC_EXIT_RC(clientState);
-
 }
 /**================================================================================
  * Task  			: Disconnect client from MQTT broker
@@ -253,7 +246,7 @@ int aws_disconnect() {
 		LE_ERROR("Unable to disconnect to MQTT host");
 		LE_ERROR("Error Type(%d) : %s\n", rc, _getErrorTypeFromCode(rc));
 	} else {
-		LE_DEBUG("\nSUCCESS:Disconnected from remote host");
+		LE_DEBUG("\nClient is now disconnected from remote MQTT host");
 	}
 	return rc;
 }
@@ -388,9 +381,11 @@ void _initConnection() {
 int aws_Connect() {
 	ClientState state = _getConnectionState();
 	LOCK();
+
 	if (state >= CLIENT_STATE_CONNECTED_IDLE
-				&& state <= CLIENT_STATE_DISCONNECTED_ERROR) {
+				&& state <= CLIENT_STATE_CONNECTED_WAIT_FOR_CB_RETURN) {
 			UNLOCK();
+			LE_DEBUG("MQTT host is already connected to client");
 			return SUCCESS;
 	}
 	IoT_Error_t rc = FAILURE;
@@ -402,13 +397,15 @@ int aws_Connect() {
 	connectParams.pClientID = AWS_IOT_MQTT_CLIENT_ID;
 	connectParams.clientIDLen = (uint16_t) strlen(AWS_IOT_MQTT_CLIENT_ID);
 	connectParams.isWillMsgPresent = false;
-	LE_DEBUG("Connecting...");
+	LE_DEBUG("Connecting to MQTT host '%s'...",AWS_IOT_MQTT_HOST);
 	rc = aws_iot_mqtt_connect(&client, &connectParams);
 	if (rc != SUCCESS) {
 		UNLOCK();
+		state = _getConnectionState();
+		LE_DEBUG("Failed to connect to MQTT host.. Network error(%d) and connection error(%d) is identified",rc,state);
 		return rc;
 	}
-
+	LE_DEBUG("MQTT client '%s' is now connected to MQTT host",connectParams.pClientID);
 	// Enable Auto Reconnect functionality. Minimum and Maximum time of Exponential backoff are set in aws_iot_config.h
 	//  #AWS_IOT_MQTT_MIN_RECONNECT_WAIT_INTERVAL
 	//  #AWS_IOT_MQTT_MAX_RECONNECT_WAIT_INTERVAL
@@ -443,9 +440,14 @@ int aws_Publish(const char* topic, const int topicLen, int32_t qosType,
 	if (rc == MQTT_REQUEST_TIMEOUT_ERROR) {
 		LE_ERROR(
 				"QOS1 publish ack for activity record not received. Loss of connectivity.");
-	} else if (rc != SUCCESS) {
+	} else if (rc == -13 ) {
+		LE_ERROR("Unable to publish topic. Network is disconnected");
+	} else if ( rc != SUCCESS ) {
 		LE_ERROR("Activity records publish failure %d", rc);
+	} else {
+		LE_DEBUG("Published message (%s) with payload (%s) to host",topic,payload);
 	}
+
 	return rc;
 
 }
@@ -461,21 +463,25 @@ void _subscribeCallback(AWS_IoT_Client *pClient, char *topicName,
 		uint16_t topicNameLen, IoT_Publish_Message_Params *params, void *pData) {
 	IOT_UNUSED(pData);
 	IOT_UNUSED(pClient);
+	LE_DEBUG("=====================================================================");
 	LE_DEBUG("Got Published message, Topic Name : %.*s\tPayload : %.*s",
 			topicNameLen, topicName, (int ) params->payloadLen,
 			(char * ) params->payload);
+	LE_DEBUG("======================================================================");
 }
 
 /**
  *
  */
 static void* _yield(void* timeout) {
+
+	//TraceRef = le_log_GetTraceRef("Func _yield()");
 	IoT_Error_t rc = SUCCESS;
 	int to = (int) timeout;
 	LE_DEBUG("YIELD with timeout: %d", to);
 	while (rc == SUCCESS && !unsubscribe) {
-		LE_DEBUG(
-				"====================Calling YIELD===========================");
+		//LE_TRACE(TraceRef, "====================Calling YIELD===========================");
+		LE_DEBUG("Calling YIELD...");
 		IoT_Error_t rc = SUCCESS;
 		LOCK();
 		rc = aws_iot_mqtt_yield(&client, to);
@@ -510,16 +516,31 @@ int aws_Subscribe(const char* sTopic, int32_t topicLen, int32_t qosType) {
 		LE_ERROR("Error subscribing topic %s: \nErrorType(%d) = %s ", sTopic,
 				rc, _getErrorTypeFromCode(rc));
 	} else if (_numSubcribes == 0) {
+
+		// Create thread to call yield function for first subscription
 		unsubscribe = false;
-		yieldThread = le_thread_Create(sTopic, _yield, (void*) YIELD_TIMEOUT);
+		yieldThread = le_thread_Create(AWS_IOT_SUBSCRIBE_THREAD_NAME, _yield, (void*) YIELD_TIMEOUT);
 		le_thread_SetJoinable(yieldThread);
 		le_thread_Start(yieldThread);
+		_numSubcribes++;
+	} else {
 		_numSubcribes++;
 	}
 	le_mutex_Unlock(MutexSubscribe);
 	return rc;
 }
 
+/**
+ * Stop yield thread
+ */
+void _stopYieldThread() {
+	unsubscribe = true;
+	// Main yieldThread joins with the child before exiting the process.
+	LE_DEBUG("Waiting for Yield thread to finish..");
+	void* threadResult;
+	le_thread_Join(yieldThread, &threadResult);
+	LE_DEBUG("Yield thread is joined and terminated");
+}
 
 /**
  * Unsubscribe to a particular topic
@@ -536,6 +557,7 @@ int aws_UnSubscribe(const char* sTopic, int32_t topicLen) {
 	if (SUCCESS != rc) {
 		LE_ERROR("Error UnSubscribing topic %s: \nErrorType(%d) = %s ", sTopic,
 				rc, _getErrorTypeFromCode(rc));
+		LE_DEBUG("Total no of subscription = %d ",_numSubcribes);
 	} else if (--_numSubcribes <= 0) {
 		_stopYieldThread();
 		_numSubcribes = 0;
@@ -558,7 +580,7 @@ COMPONENT_INIT {
 	// Initialize connection to the MQTT broker
 	_initConnection();
 
-
-
+	LE_DEBUG("================ S T A R T   T E S T ====================");
+	IOT_TEST();
 }
 

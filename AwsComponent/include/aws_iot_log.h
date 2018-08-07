@@ -41,6 +41,20 @@ extern "C" {
  *
  * Macro to expose function, line number as well as desired log message.
  */
+#ifdef ENABLE_IOT_TRACE
+#define IOT_TRACE(...)    \
+	{\
+	LE_TRACE(TraceRef, ##__VA_ARGS__)\
+	}
+#else
+#define IOT_TRACE(...)
+#endif
+
+/**
+ * @brief Debug level logging macro.
+ *
+ * Macro to expose function, line number as well as desired log message.
+ */
 #ifdef ENABLE_IOT_DEBUG
 #define IOT_DEBUG(...)    \
 	{\

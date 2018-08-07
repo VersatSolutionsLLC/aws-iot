@@ -1,25 +1,23 @@
 cflags:
 {
-		-I $CURDIR/../AwsComponent/
+	-I $CURDIR/../AwsComponent/
 		-I $CURDIR/../AwsComponent/mbedtls/include
 		-I $CURDIR/../AwsComponent/mbedtls/
 		-I $CURDIR/../AwsComponent/common
 		-I $CURDIR/../AwsComponent/jsmn
 		-I $CURDIR/../AwsComponent/include
-		#if ${AWS_DEBUG} = 1
-			-DENABLE_IOT_DEBUG
-			-DENABLE_IOT_ERROR
-			-DENABLE_IOT_TRACE
-			-DENABLE_IOT_INFO
-    	#endif
-}
+		-DENABLE_IOT_TEST
 
+}
+#if ${AWS_DEBUG} = 1 #include -DENABLE_IOT_DEBUG
+			#endif
+		
 provides:
 {
-    api:
-    {
-        aws = AwsComponent/aws.api
-    }
+	api:
+	{
+		aws = AwsComponent/aws.api
+	}
 }
 
 bundles:
@@ -129,7 +127,6 @@ sources:
 	jsmn/jsmn.c
 	
 	mbedtls/network_mbedtls_wrapper.c
-	
 	AwsIot.c
-
+	Test_AwsIot.c
 }
