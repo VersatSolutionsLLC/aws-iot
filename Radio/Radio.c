@@ -2,12 +2,73 @@
 #include "interfaces.h"
 
 #define NULL_VALUE -999
+#define _INTERFACE_NAME_MAX_BYTES 100
+
+typedef struct
+{
+    bool isConnected;
+    char interfaceName[_INTERFACE_NAME_MAX_BYTES];
+}
+ConnStateData_t;
+
+
+static le_data_RequestObjRef_t requestObj;
 
 COMPONENT_INIT {
 }
 
 
+/**
+ * Request for data connection using modem service(LE_DATA_CELLULAR).
+ */
+void radio_Connect(){
+	le_result_t res;
+	LE_DEBUG("Setting technology rank");
+	le_data_Technology_t technology = le_data_GetTechnology();
+	if (technology == LE_DATA_CELLULAR) {
+		res = le_data_SetTechnologyRank(1, LE_DATA_CELLULAR);
+		if(res != LE_OK){
+			LE_ERROR("Unable to connect data service!");
+		}
+		LE_DEBUG("Successfully set technology rank CELLULAR_DATA to 1");
+	}
+	LE_DEBUG("Attempt to connect to data");
+	requestObj = le_data_Request();
+}
 
+/**
+ * Request for disconnection of data service.
+ */
+void radio_Disconnect(){
+	if (requestObj != NULL)
+		le_data_Release(requestObj);
+}
+
+/**
+ * Remove data connection handler
+ */
+void radio_RemoveDataConnectionStateHandler(radio_DataConnectionStateHandlerRef_t handlerRef){
+	le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+/**
+ * Add new data connection handler
+ */
+radio_DataConnectionStateHandlerRef_t radio_AddDataConnectionStateHandler( radio_DataConnectionStateHandlerFunc_t handlerPtr,  void* contextPtr){
+	LE_DEBUG("Adding data connection/disconnection handler");
+	le_data_ConnectionStateHandlerRef_t handler =  	le_data_AddConnectionStateHandler ((le_data_ConnectionStateHandlerFunc_t) handlerPtr, contextPtr);
+	if(handler!=NULL){
+		LE_DEBUG("Successfully added data connection/disconnection handler");
+	}
+	else{
+		LE_ERROR("Failed to add handler!");
+	}
+	return (radio_DataConnectionStateHandlerRef_t)(handler);
+}
+
+/**
+ * Get radio info of current time for GSM or LTE
+ */
 void radio_Info(char* params, size_t size) {
 	le_result_t res;
 	le_mrc_Rat_t rat;

@@ -115,15 +115,22 @@ int _getJson(char* json, const int jsonLength) {
 	return strlen(json);
 }
 
-COMPONENT_INIT {
+/**
+ * ON successful connection or disconnection of mobile data the function called with proper
+ * interface name and isConnected flag.
+ */
+static void _connectionHandler(char* infName, bool isConnected, void* contextPtr){
+	if(!isConnected){
+		LE_WARN("Device not connect to internet!");
+		return;
+	}
+	LE_INFO("Device connected to internet with interface name %s",infName);
+
 	const char *topic = "versat/radio";
 	int32_t qosType = 1;
 	int32_t topicLen = strlen(topic);
-
-	LE_INFO("=========Trying to connect MQTT Host============\n");
-	/*Connect to remote client*/
-
 	aws_Connect();
+
 	char json[1024];
 
 	int rc = 0;
@@ -143,4 +150,17 @@ COMPONENT_INIT {
 				json);
 		sleep(l);
 	}
+
+}
+
+
+
+COMPONENT_INIT {
+
+	LE_INFO("=========Trying to connect MQTT Host============\n");
+
+	radio_AddDataConnectionStateHandler((radio_DataConnectionStateHandlerFunc_t)_connectionHandler, NULL);
+
+	radio_Connect();
+
 }

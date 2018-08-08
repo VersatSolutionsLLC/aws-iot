@@ -48,6 +48,59 @@ void radio_AdvertiseService
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type used by Add/Remove functions for EVENT 'radio_DataConnectionState'
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct radio_DataConnectionStateHandler* radio_DataConnectionStateHandlerRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for connection state changes
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*radio_DataConnectionStateHandlerFunc_t)
+(
+    const char* LE_NONNULL intfName,
+        ///< Interface name for the data connection
+    bool isConnected,
+        ///< State: connected or disconnected
+    void* contextPtr
+        ///<
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'radio_DataConnectionState'
+ *
+ * This event provides information on connection state changes
+ */
+//--------------------------------------------------------------------------------------------------
+radio_DataConnectionStateHandlerRef_t radio_AddDataConnectionStateHandler
+(
+    radio_DataConnectionStateHandlerFunc_t handlerPtr,
+        ///< [IN]
+    void* contextPtr
+        ///< [IN]
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'radio_DataConnectionState'
+ */
+//--------------------------------------------------------------------------------------------------
+void radio_RemoveDataConnectionStateHandler
+(
+    radio_DataConnectionStateHandlerRef_t handlerRef
+        ///< [IN]
+);
+
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -59,6 +112,28 @@ void radio_Info
         ///< [OUT]
     size_t paramsSize
         ///< [IN]
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ */
+//--------------------------------------------------------------------------------------------------
+void radio_Connect
+(
+    void
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ */
+//--------------------------------------------------------------------------------------------------
+void radio_Disconnect
+(
+    void
 );
 
 

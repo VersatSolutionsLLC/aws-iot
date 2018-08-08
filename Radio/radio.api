@@ -1,1 +1,31 @@
-FUNCTION Info(string params[1024] OUT);
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for connection state changes
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER DataConnectionStateHandler
+(
+   	string intfName[100] IN,  ///< Interface name for the data connection
+    bool   isConnected                      IN   ///< State: connected or disconnected
+);
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on connection state changes
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT DataConnectionState
+(
+    DataConnectionStateHandler handler
+);
+FUNCTION Info
+(
+	string params[1024] OUT
+);
+FUNCTION Connect
+(
+	
+);
+FUNCTION Disconnect
+(
+	
+);

@@ -6,7 +6,7 @@ cflags:
 		-I $CURDIR/../AwsComponent/common
 		-I $CURDIR/../AwsComponent/jsmn
 		-I $CURDIR/../AwsComponent/include
-		-DENABLE_IOT_TEST
+		//-DENABLE_IOT_TEST
 
 }
 #if ${AWS_DEBUG} = 1 #include -DENABLE_IOT_DEBUG
