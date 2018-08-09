@@ -1,0 +1,11 @@
+sources:
+{
+	subscribe.c
+}
+requires:
+{
+    api:
+    {
+        AwsComponent/aws.api
+    }
+}

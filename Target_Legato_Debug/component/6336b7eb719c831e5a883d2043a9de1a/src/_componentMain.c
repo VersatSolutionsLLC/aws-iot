@@ -18,6 +18,9 @@ void le_mrc_ConnectService(void);
 extern const char* _Radio_le_temp_ServiceInstanceName;
 const char** le_temp_ServiceInstanceNamePtr = &_Radio_le_temp_ServiceInstanceName;
 void le_temp_ConnectService(void);
+extern const char* _Radio_le_data_ServiceInstanceName;
+const char** le_data_ServiceInstanceNamePtr = &_Radio_le_data_ServiceInstanceName;
+void le_data_ConnectService(void);
 extern const char* _Radio_radio_ServiceInstanceName;
 const char** radio_ServiceInstanceNamePtr = &_Radio_radio_ServiceInstanceName;
 void radio_AdvertiseService(void);
@@ -40,6 +43,7 @@ __attribute__((constructor)) void _Radio_Init(void)
     // Connect client-side IPC interfaces.
     le_mrc_ConnectService();
     le_temp_ConnectService();
+    le_data_ConnectService();
 
     // Register the component with the Log Daemon.
     Radio_LogSession = log_RegComponent("Radio", &Radio_LogLevelFilterPtr);

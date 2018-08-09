@@ -545,6 +545,251 @@ void radio_DisconnectService
 //--------------------------------------------------------------------------------------------------
 
 
+// This function parses the message buffer received from the server, and then calls the user
+// registered handler, which is stored in a client data object.
+static void _Handle_radio_AddDataConnectionStateHandler
+(
+    void* _reportPtr,
+    void* _dataPtr
+)
+{
+    le_msg_MessageRef_t _msgRef = _reportPtr;
+    _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    uint8_t* _msgBufPtr = _msgPtr->buffer;
+    size_t _msgBufSize = _MAX_MSG_SIZE;
+
+    // The clientContextPtr always exists and is always first. It is a safe reference to the client
+    // data object, but we already get the pointer to the client data object through the _dataPtr
+    // parameter, so we don't need to do anything with clientContextPtr, other than unpacking it.
+    void* _clientContextPtr;
+    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize,
+                                  &_clientContextPtr ))
+    {
+        goto error_unpack;
+    }
+
+    // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
+    // and check for NULL has already been done when this function is queued.
+    _ClientData_t* _clientDataPtr = _dataPtr;
+
+    // Pull out additional data from the client data pointer
+    radio_DataConnectionStateHandlerFunc_t _handlerRef_radio_AddDataConnectionStateHandler = (radio_DataConnectionStateHandlerFunc_t)_clientDataPtr->handlerPtr;
+    void* contextPtr = _clientDataPtr->contextPtr;
+
+    // Unpack the remaining parameters
+    char intfName[101];
+    if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
+                               intfName,
+                               sizeof(intfName),
+                               100 ))
+    {
+        goto error_unpack;
+    }
+    bool isConnected;
+    if (!le_pack_UnpackBool( &_msgBufPtr, &_msgBufSize,
+                                               &isConnected ))
+    {
+        goto error_unpack;
+    }
+
+    // Call the registered handler
+    if ( _handlerRef_radio_AddDataConnectionStateHandler != NULL )
+    {
+        _handlerRef_radio_AddDataConnectionStateHandler(intfName, isConnected, contextPtr );
+    }
+    else
+    {
+        LE_FATAL("Error in client data: no registered handler");
+    }
+
+    // Release the message, now that we are finished with it.
+    le_msg_ReleaseMsg(_msgRef);
+
+    return;
+
+error_unpack:
+    // Handle any unpack errors by dying -- server should not be sending invalid data; if it is
+    // something is seriously wrong.
+    LE_FATAL("Error unpacking message");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'radio_DataConnectionState'
+ *
+ * This event provides information on connection state changes
+ */
+//--------------------------------------------------------------------------------------------------
+radio_DataConnectionStateHandlerRef_t radio_AddDataConnectionStateHandler
+(
+    radio_DataConnectionStateHandlerFunc_t handlerPtr,
+        ///< [IN]
+    void* contextPtr
+        ///< [IN]
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    radio_DataConnectionStateHandlerRef_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_radio_AddDataConnectionStateHandler;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+    // The handlerPtr and contextPtr input parameters are stored in the client
+    // data object, and it is a safe reference to this object that is passed down
+    // as the context pointer.  The handlerPtr is not passed down.
+    // Create a new client data object and fill it in
+    _ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
+    _clientDataPtr->handlerPtr = (le_event_HandlerFunc_t)handlerPtr;
+    _clientDataPtr->contextPtr = contextPtr;
+    _clientDataPtr->callersThreadRef = le_thread_GetCurrent();
+    // Create a safeRef to be passed down as the contextPtr
+    _LOCK
+    contextPtr = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
+    _UNLOCK
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize, contextPtr ));
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    if (_result)
+    {
+        // Put the handler reference result into the client data object, and
+        // then return a safe reference to the client data object as the reference;
+        // this safe reference is contained in the contextPtr, which was assigned
+        // when the client data object was created.
+        _clientDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
+        _result = contextPtr;
+    }
+    else
+    {
+        // Add failed, release the client data.
+        le_mem_Release(_clientDataPtr);
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'radio_DataConnectionState'
+ */
+//--------------------------------------------------------------------------------------------------
+void radio_RemoveDataConnectionStateHandler
+(
+    radio_DataConnectionStateHandlerRef_t handlerRef
+        ///< [IN]
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_radio_RemoveDataConnectionStateHandler;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+    // The passed in handlerRef is a safe reference for the client data object.  Need to get the
+    // real handlerRef from the client data object and then delete both the safe reference and
+    // the object since they are no longer needed.
+    _LOCK
+    _ClientData_t* clientDataPtr = le_ref_Lookup(_HandlerRefMap, handlerRef);
+    LE_FATAL_IF(clientDataPtr==NULL, "Invalid reference");
+    le_ref_DeleteRef(_HandlerRefMap, handlerRef);
+    _UNLOCK
+    handlerRef = (radio_DataConnectionStateHandlerRef_t)clientDataPtr->handlerRef;
+    le_mem_Release(clientDataPtr);
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize,
+                                     handlerRef ));
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+    return;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  */
@@ -624,6 +869,122 @@ error_unpack:
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ */
+//--------------------------------------------------------------------------------------------------
+void radio_Connect
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_radio_Connect;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+    return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ */
+//--------------------------------------------------------------------------------------------------
+void radio_Disconnect
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_radio_Disconnect;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+    return;
+}
+
+
 static void ClientIndicationRecvHandler
 (
     le_msg_MessageRef_t  msgRef,
@@ -662,6 +1023,9 @@ static void ClientIndicationRecvHandler
     // Trigger the appropriate event
     switch (msgPtr->id)
     {
+        case _MSGID_radio_AddDataConnectionStateHandler :
+            le_event_QueueFunctionToThread(callersThreadRef, _Handle_radio_AddDataConnectionStateHandler, msgRef, clientDataPtr);
+            break;
 
         default:
             LE_FATAL("Unknowm msg id = %i for client thread = %p", msgPtr->id, callersThreadRef);

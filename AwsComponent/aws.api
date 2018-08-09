@@ -23,3 +23,12 @@ FUNCTION int32 disconnect
 (
 	
 );
+HANDLER SubscribeEventHandler
+(
+    string payload[100] IN                        
+);
+
+EVENT SubscribeEvent
+(
+    SubscribeEventHandler handler
+);

@@ -4,6 +4,7 @@ executables:
 	radio = ( Radio )
 	publish = (PublishRadio)
 	gps = (Gps)
+	subEXE = ( subscribe )
 }
 
 requires:
@@ -36,6 +37,7 @@ processes:
 		( radio )
 		( publish )
 		( gps )
+		( subEXE )
 	}
 	maxCoreDumpFileBytes: 512K
 	maxFileBytes: 512K
@@ -49,6 +51,7 @@ bindings:
     radio.Radio.le_data -> dataConnectionService.le_data
     gps.Gps.le_gnss -> positioningService.le_gnss
     publish.PublishRadio.gps -> gps.Gps.gps
+	subEXE.subscribe.aws -> awsIot.AwsComponent.aws
 }
 extern:
 {

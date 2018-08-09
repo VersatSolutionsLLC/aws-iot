@@ -13,6 +13,7 @@ extern "C" {
 
 #include "api/66dee3ecaa2d84623bc078c25538182c/client/le_mrc_interface.h"
 #include "api/74da19e8ce360a0664696b8a08ca3433/client/le_temp_interface.h"
+#include "api/f970c0d0e5995056740616162db61084/client/le_data_interface.h"
 #include "api/d0d5a81add26997f61e8048f43fd9ea4/server/radio_server.h"
 
 #ifdef __cplusplus

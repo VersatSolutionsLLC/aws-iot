@@ -101,6 +101,26 @@ void aws_DisconnectService
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reference type used by Add/Remove functions for EVENT 'aws_SubscribeEvent'
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct aws_SubscribeEventHandler* aws_SubscribeEventHandlerRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*aws_SubscribeEventHandlerFunc_t)
+(
+    const char* LE_NONNULL payload,
+        ///<
+    void* contextPtr
+        ///<
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  */
 //--------------------------------------------------------------------------------------------------
 int32_t aws_Connect
@@ -159,6 +179,30 @@ int32_t aws_UnSubscribe
 int32_t aws_disconnect
 (
     void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'aws_SubscribeEvent'
+ */
+//--------------------------------------------------------------------------------------------------
+aws_SubscribeEventHandlerRef_t aws_AddSubscribeEventHandler
+(
+    aws_SubscribeEventHandlerFunc_t handlerPtr,
+        ///< [IN]
+    void* contextPtr
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'aws_SubscribeEvent'
+ */
+//--------------------------------------------------------------------------------------------------
+void aws_RemoveSubscribeEventHandler
+(
+    aws_SubscribeEventHandlerRef_t handlerRef
+        ///< [IN]
 );
 
 #endif // AWS_INTERFACE_H_INCLUDE_GUARD

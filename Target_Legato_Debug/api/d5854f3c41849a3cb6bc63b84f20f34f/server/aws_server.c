@@ -629,6 +629,193 @@ static void Handle_aws_disconnect
 }
 
 
+static void AsyncResponse_aws_AddSubscribeEventHandler
+(
+    const char* LE_NONNULL payload,
+    void* contextPtr
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    _Message_t* _msgPtr;
+    _ServerData_t* serverDataPtr = (_ServerData_t*)contextPtr;
+
+    // Will not be used if no data is sent back to client
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(serverDataPtr->clientSessionRef);
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_aws_AddSubscribeEventHandler;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Always pack the client context pointer first
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize, serverDataPtr->contextPtr ))
+
+    // Pack the input parameters
+    
+    LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
+                                  payload, 100 ));
+
+    // Send the async response to the client
+    TRACE("Sending message to client session %p : %ti bytes sent",
+          serverDataPtr->clientSessionRef,
+          _msgBufPtr-_msgPtr->buffer);
+
+    SendMsgToClient(_msgRef);
+}
+
+
+static void Handle_aws_AddSubscribeEventHandler
+(
+    le_msg_MessageRef_t _msgRef
+
+)
+{
+    // Get the message buffer pointer
+    __attribute__((unused)) uint8_t* _msgBufPtr =
+        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
+
+    // Needed if we are returning a result or output values
+    uint8_t* _msgBufStartPtr = _msgBufPtr;
+
+    // Unpack which outputs are needed
+
+    // Unpack the input parameters from the message
+    void *contextPtr;
+    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize, &contextPtr ))
+    {
+        goto error_unpack;
+    }
+
+    // Create a new server data object and fill it in
+    _ServerData_t* serverDataPtr = le_mem_ForceAlloc(_ServerDataPool);
+    serverDataPtr->clientSessionRef = le_msg_GetSession(_msgRef);
+    serverDataPtr->contextPtr = contextPtr;
+    serverDataPtr->handlerRef = NULL;
+    serverDataPtr->removeHandlerFunc = NULL;
+    contextPtr = serverDataPtr;
+
+    // Define storage for output parameters
+
+    // Call the function
+    aws_SubscribeEventHandlerRef_t _result;
+    _result  = aws_AddSubscribeEventHandler ( AsyncResponse_aws_AddSubscribeEventHandler, 
+        contextPtr );
+
+    if (_result)
+    {
+        // Put the handler reference result and a pointer to the associated remove function
+        // into the server data object.  This function pointer is needed in case the client
+        // is closed and the handlers need to be removed.
+        serverDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
+        serverDataPtr->removeHandlerFunc =
+            (RemoveHandlerFunc_t)aws_RemoveSubscribeEventHandler;
+
+        // Return a safe reference to the server data object as the reference.
+        _LOCK
+        _result = le_ref_CreateRef(_HandlerRefMap, serverDataPtr);
+        _UNLOCK
+    }
+    else
+    {
+        // Adding handler failed; release serverDataPtr and return NULL back to the client.
+        le_mem_Release(serverDataPtr);
+    }
+
+    // Re-use the message buffer for the response
+    _msgBufPtr = _msgBufStartPtr;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack the result first
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize, _result ));
+
+    // Pack any "out" parameters
+
+    // Return the response
+    TRACE("Sending response to client session %p : %ti bytes sent",
+          le_msg_GetSession(_msgRef),
+          _msgBufPtr-_msgBufStartPtr);
+
+
+    le_msg_Respond(_msgRef);
+
+    return;
+
+error_unpack:
+    LE_KILL_CLIENT("Error unpacking message");
+}
+
+
+static void Handle_aws_RemoveSubscribeEventHandler
+(
+    le_msg_MessageRef_t _msgRef
+
+)
+{
+    // Get the message buffer pointer
+    __attribute__((unused)) uint8_t* _msgBufPtr =
+        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
+
+    // Needed if we are returning a result or output values
+    uint8_t* _msgBufStartPtr = _msgBufPtr;
+
+    // Unpack which outputs are needed
+
+    // Unpack the input parameters from the message
+    aws_SubscribeEventHandlerRef_t handlerRef;
+    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize,
+                                  &handlerRef ))
+    {
+        goto error_unpack;
+    }
+    // The passed in handlerRef is a safe reference for the server data object.  Need to get the
+    // real handlerRef from the server data object and then delete both the safe reference and
+    // the object since they are no longer needed.
+    _LOCK
+    _ServerData_t* serverDataPtr = le_ref_Lookup(_HandlerRefMap,
+                                                 handlerRef);
+    if ( serverDataPtr == NULL )
+    {
+        _UNLOCK
+        LE_KILL_CLIENT("Invalid reference");
+        return;
+    }
+    le_ref_DeleteRef(_HandlerRefMap, handlerRef);
+    _UNLOCK
+    handlerRef = (aws_SubscribeEventHandlerRef_t)serverDataPtr->handlerRef;
+    le_mem_Release(serverDataPtr);
+
+    // Define storage for output parameters
+
+    // Call the function
+    aws_RemoveSubscribeEventHandler ( 
+        handlerRef );
+
+    // Re-use the message buffer for the response
+    _msgBufPtr = _msgBufStartPtr;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack any "out" parameters
+
+    // Return the response
+    TRACE("Sending response to client session %p : %ti bytes sent",
+          le_msg_GetSession(_msgRef),
+          _msgBufPtr-_msgBufStartPtr);
+
+
+    le_msg_Respond(_msgRef);
+
+    return;
+
+error_unpack:
+    LE_KILL_CLIENT("Error unpacking message");
+}
+
+
 static void ServerMsgRecvHandler
 (
     le_msg_MessageRef_t msgRef,
@@ -651,6 +838,8 @@ static void ServerMsgRecvHandler
         case _MSGID_aws_Subscribe : Handle_aws_Subscribe(msgRef); break;
         case _MSGID_aws_UnSubscribe : Handle_aws_UnSubscribe(msgRef); break;
         case _MSGID_aws_disconnect : Handle_aws_disconnect(msgRef); break;
+        case _MSGID_aws_AddSubscribeEventHandler : Handle_aws_AddSubscribeEventHandler(msgRef); break;
+        case _MSGID_aws_RemoveSubscribeEventHandler : Handle_aws_RemoveSubscribeEventHandler(msgRef); break;
 
         default: LE_ERROR("Unknowm msg id = %i", msgPtr->id);
     }

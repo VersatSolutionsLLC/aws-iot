@@ -8,8 +8,8 @@
  */
 
 
-#include "aws_messages.h"
-#include "aws_interface.h"
+#include "le_data_messages.h"
+#include "le_data_interface.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ typedef struct
 {
     le_msg_SessionRef_t sessionRef;     ///< Client Session Reference
     int                 clientCount;    ///< Number of clients sharing this thread
-    aws_DisconnectHandler_t disconnectHandler; ///< Disconnect handler for this thread
+    le_data_DisconnectHandler_t disconnectHandler; ///< Disconnect handler for this thread
     void*               contextPtr;     ///< Context for disconnect handler
 }
 _ClientThreadData_t;
@@ -280,7 +280,7 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
 
     // If the thread specific data is NULL, then the session ref has not been created.
     LE_FATAL_IF(clientThreadPtr==NULL,
-                "aws_ConnectService() not called for current thread");
+                "le_data_ConnectService() not called for current thread");
 
     return clientThreadPtr->sessionRef;
 }
@@ -294,10 +294,10 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
 static void InitCommonData(void)
 {
     // Allocate the client data pool
-    _ClientDataPool = le_mem_CreatePool("aws_ClientData", sizeof(_ClientData_t));
+    _ClientDataPool = le_mem_CreatePool("le_data_ClientData", sizeof(_ClientData_t));
 
     // Allocate the client thread pool
-    _ClientThreadDataPool = le_mem_CreatePool("aws_ClientThreadData", sizeof(_ClientThreadData_t));
+    _ClientThreadDataPool = le_mem_CreatePool("le_data_ClientThreadData", sizeof(_ClientThreadData_t));
 
     // Create the thread-local data key to be used to store a pointer to each thread object.
     LE_ASSERT(pthread_key_create(&_ThreadDataKey, NULL) == 0);
@@ -306,7 +306,7 @@ static void InitCommonData(void)
     // The size of the map should be based on the number of handlers defined multiplied by
     // the number of client threads.  Since this number can't be completely determined at
     // build time, just make a reasonable guess.
-    _HandlerRefMap = le_ref_CreateMap("aws_ClientHandlers", 5);
+    _HandlerRefMap = le_ref_CreateMap("le_data_ClientHandlers", 5);
 }
 
 
@@ -380,7 +380,7 @@ static le_result_t DoConnectService
  * This function is created automatically.
  */
 //--------------------------------------------------------------------------------------------------
-void aws_ConnectService
+void le_data_ConnectService
 (
     void
 )
@@ -409,7 +409,7 @@ void aws_ConnectService
  *  - LE_COMM_ERROR if the Service Directory cannot be reached.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t aws_TryConnectService
+le_result_t le_data_TryConnectService
 (
     void
 )
@@ -448,7 +448,7 @@ static void SessionCloseHandler
         clientThreadPtr->disconnectHandler(clientThreadPtr->contextPtr);
     }
 
-    LE_FATAL("Component for aws disconnected\n");
+    LE_FATAL("Component for le_data disconnected\n");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -459,9 +459,9 @@ static void SessionCloseHandler
  * to continue without exiting, it should call longjmp() from inside the handler.
  */
 //--------------------------------------------------------------------------------------------------
-void aws_SetServerDisconnectHandler
+void le_data_SetServerDisconnectHandler
 (
-    aws_DisconnectHandler_t disconnectHandler,
+    le_data_DisconnectHandler_t disconnectHandler,
     void *contextPtr
 )
 {
@@ -498,7 +498,7 @@ void aws_SetServerDisconnectHandler
  * This function is created automatically.
  */
 //--------------------------------------------------------------------------------------------------
-void aws_DisconnectService
+void le_data_DisconnectService
 (
     void
 )
@@ -545,412 +545,9 @@ void aws_DisconnectService
 //--------------------------------------------------------------------------------------------------
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- */
-//--------------------------------------------------------------------------------------------------
-int32_t aws_Connect
-(
-    void
-)
-{
-    le_msg_MessageRef_t _msgRef;
-    le_msg_MessageRef_t _responseMsgRef;
-    _Message_t* _msgPtr;
-
-    // Will not be used if no data is sent/received from server.
-    __attribute__((unused)) uint8_t* _msgBufPtr;
-    __attribute__((unused)) size_t _msgBufSize;
-
-    int32_t _result;
-
-    // Range check values, if appropriate
-
-
-    // Create a new message object and get the message buffer
-    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
-    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_aws_Connect;
-    _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack a list of outputs requested by the client.
-
-    // Pack the input parameters
-
-    // Send a request to the server and get the response.
-    TRACE("Sending message to server and waiting for response : %ti bytes sent",
-          _msgBufPtr-_msgPtr->buffer);
-
-    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
-    // It is a serious error if we don't get a valid response from the server.  Call disconnect
-    // handler (if one is defined) to allow cleanup
-    if (_responseMsgRef == NULL)
-    {
-        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
-    }
-
-    // Process the result and/or output parameters, if there are any.
-    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
-    _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Unpack the result first
-    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize, &_result ))
-    {
-        goto error_unpack;
-    }
-
-    // Unpack any "out" parameters
-
-
-    // Release the message object, now that all results/output has been copied.
-    le_msg_ReleaseMsg(_responseMsgRef);
-
-
-    return _result;
-
-error_unpack:
-    LE_FATAL("Unexpected response from server.");
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- */
-//--------------------------------------------------------------------------------------------------
-int32_t aws_Publish
-(
-    const char* LE_NONNULL topic,
-        ///< [IN]
-    int32_t topicLen,
-        ///< [IN]
-    int32_t qosType,
-        ///< [IN]
-    const char* LE_NONNULL payload,
-        ///< [IN]
-    int32_t payloadLen
-        ///< [IN]
-)
-{
-    le_msg_MessageRef_t _msgRef;
-    le_msg_MessageRef_t _responseMsgRef;
-    _Message_t* _msgPtr;
-
-    // Will not be used if no data is sent/received from server.
-    __attribute__((unused)) uint8_t* _msgBufPtr;
-    __attribute__((unused)) size_t _msgBufSize;
-
-    int32_t _result;
-
-    // Range check values, if appropriate
-    if ( strnlen(topic, 256) > 256 )
-    {
-        LE_FATAL("strnlen(topic, 256) > 256");
-    }
-    if ( strnlen(payload, 256) > 256 )
-    {
-        LE_FATAL("strnlen(payload, 256) > 256");
-    }
-
-
-    // Create a new message object and get the message buffer
-    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
-    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_aws_Publish;
-    _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack a list of outputs requested by the client.
-
-    // Pack the input parameters
-    LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
-                                  topic, 256 ));
-    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize,
-                                                  topicLen ));
-    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize,
-                                                  qosType ));
-    LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
-                                  payload, 256 ));
-    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize,
-                                                  payloadLen ));
-
-    // Send a request to the server and get the response.
-    TRACE("Sending message to server and waiting for response : %ti bytes sent",
-          _msgBufPtr-_msgPtr->buffer);
-
-    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
-    // It is a serious error if we don't get a valid response from the server.  Call disconnect
-    // handler (if one is defined) to allow cleanup
-    if (_responseMsgRef == NULL)
-    {
-        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
-    }
-
-    // Process the result and/or output parameters, if there are any.
-    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
-    _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Unpack the result first
-    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize, &_result ))
-    {
-        goto error_unpack;
-    }
-
-    // Unpack any "out" parameters
-
-
-    // Release the message object, now that all results/output has been copied.
-    le_msg_ReleaseMsg(_responseMsgRef);
-
-
-    return _result;
-
-error_unpack:
-    LE_FATAL("Unexpected response from server.");
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- */
-//--------------------------------------------------------------------------------------------------
-int32_t aws_Subscribe
-(
-    const char* LE_NONNULL topic,
-        ///< [IN]
-    int32_t topicLen,
-        ///< [IN]
-    int32_t qosType
-        ///< [IN]
-)
-{
-    le_msg_MessageRef_t _msgRef;
-    le_msg_MessageRef_t _responseMsgRef;
-    _Message_t* _msgPtr;
-
-    // Will not be used if no data is sent/received from server.
-    __attribute__((unused)) uint8_t* _msgBufPtr;
-    __attribute__((unused)) size_t _msgBufSize;
-
-    int32_t _result;
-
-    // Range check values, if appropriate
-    if ( strnlen(topic, 256) > 256 )
-    {
-        LE_FATAL("strnlen(topic, 256) > 256");
-    }
-
-
-    // Create a new message object and get the message buffer
-    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
-    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_aws_Subscribe;
-    _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack a list of outputs requested by the client.
-
-    // Pack the input parameters
-    LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
-                                  topic, 256 ));
-    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize,
-                                                  topicLen ));
-    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize,
-                                                  qosType ));
-
-    // Send a request to the server and get the response.
-    TRACE("Sending message to server and waiting for response : %ti bytes sent",
-          _msgBufPtr-_msgPtr->buffer);
-
-    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
-    // It is a serious error if we don't get a valid response from the server.  Call disconnect
-    // handler (if one is defined) to allow cleanup
-    if (_responseMsgRef == NULL)
-    {
-        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
-    }
-
-    // Process the result and/or output parameters, if there are any.
-    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
-    _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Unpack the result first
-    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize, &_result ))
-    {
-        goto error_unpack;
-    }
-
-    // Unpack any "out" parameters
-
-
-    // Release the message object, now that all results/output has been copied.
-    le_msg_ReleaseMsg(_responseMsgRef);
-
-
-    return _result;
-
-error_unpack:
-    LE_FATAL("Unexpected response from server.");
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- */
-//--------------------------------------------------------------------------------------------------
-int32_t aws_UnSubscribe
-(
-    const char* LE_NONNULL topic,
-        ///< [IN]
-    int32_t topicLen
-        ///< [IN]
-)
-{
-    le_msg_MessageRef_t _msgRef;
-    le_msg_MessageRef_t _responseMsgRef;
-    _Message_t* _msgPtr;
-
-    // Will not be used if no data is sent/received from server.
-    __attribute__((unused)) uint8_t* _msgBufPtr;
-    __attribute__((unused)) size_t _msgBufSize;
-
-    int32_t _result;
-
-    // Range check values, if appropriate
-    if ( strnlen(topic, 256) > 256 )
-    {
-        LE_FATAL("strnlen(topic, 256) > 256");
-    }
-
-
-    // Create a new message object and get the message buffer
-    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
-    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_aws_UnSubscribe;
-    _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack a list of outputs requested by the client.
-
-    // Pack the input parameters
-    LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
-                                  topic, 256 ));
-    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize,
-                                                  topicLen ));
-
-    // Send a request to the server and get the response.
-    TRACE("Sending message to server and waiting for response : %ti bytes sent",
-          _msgBufPtr-_msgPtr->buffer);
-
-    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
-    // It is a serious error if we don't get a valid response from the server.  Call disconnect
-    // handler (if one is defined) to allow cleanup
-    if (_responseMsgRef == NULL)
-    {
-        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
-    }
-
-    // Process the result and/or output parameters, if there are any.
-    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
-    _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Unpack the result first
-    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize, &_result ))
-    {
-        goto error_unpack;
-    }
-
-    // Unpack any "out" parameters
-
-
-    // Release the message object, now that all results/output has been copied.
-    le_msg_ReleaseMsg(_responseMsgRef);
-
-
-    return _result;
-
-error_unpack:
-    LE_FATAL("Unexpected response from server.");
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- */
-//--------------------------------------------------------------------------------------------------
-int32_t aws_disconnect
-(
-    void
-)
-{
-    le_msg_MessageRef_t _msgRef;
-    le_msg_MessageRef_t _responseMsgRef;
-    _Message_t* _msgPtr;
-
-    // Will not be used if no data is sent/received from server.
-    __attribute__((unused)) uint8_t* _msgBufPtr;
-    __attribute__((unused)) size_t _msgBufSize;
-
-    int32_t _result;
-
-    // Range check values, if appropriate
-
-
-    // Create a new message object and get the message buffer
-    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
-    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_aws_disconnect;
-    _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Pack a list of outputs requested by the client.
-
-    // Pack the input parameters
-
-    // Send a request to the server and get the response.
-    TRACE("Sending message to server and waiting for response : %ti bytes sent",
-          _msgBufPtr-_msgPtr->buffer);
-
-    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
-    // It is a serious error if we don't get a valid response from the server.  Call disconnect
-    // handler (if one is defined) to allow cleanup
-    if (_responseMsgRef == NULL)
-    {
-        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
-    }
-
-    // Process the result and/or output parameters, if there are any.
-    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
-    _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
-
-    // Unpack the result first
-    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize, &_result ))
-    {
-        goto error_unpack;
-    }
-
-    // Unpack any "out" parameters
-
-
-    // Release the message object, now that all results/output has been copied.
-    le_msg_ReleaseMsg(_responseMsgRef);
-
-
-    return _result;
-
-error_unpack:
-    LE_FATAL("Unexpected response from server.");
-}
-
-
 // This function parses the message buffer received from the server, and then calls the user
 // registered handler, which is stored in a client data object.
-static void _Handle_aws_AddSubscribeEventHandler
+static void _Handle_le_data_AddConnectionStateHandler
 (
     void* _reportPtr,
     void* _dataPtr
@@ -976,23 +573,29 @@ static void _Handle_aws_AddSubscribeEventHandler
     _ClientData_t* _clientDataPtr = _dataPtr;
 
     // Pull out additional data from the client data pointer
-    aws_SubscribeEventHandlerFunc_t _handlerRef_aws_AddSubscribeEventHandler = (aws_SubscribeEventHandlerFunc_t)_clientDataPtr->handlerPtr;
+    le_data_ConnectionStateHandlerFunc_t _handlerRef_le_data_AddConnectionStateHandler = (le_data_ConnectionStateHandlerFunc_t)_clientDataPtr->handlerPtr;
     void* contextPtr = _clientDataPtr->contextPtr;
 
     // Unpack the remaining parameters
-    char payload[101];
+    char intfName[101];
     if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
-                               payload,
-                               sizeof(payload),
+                               intfName,
+                               sizeof(intfName),
                                100 ))
+    {
+        goto error_unpack;
+    }
+    bool isConnected;
+    if (!le_pack_UnpackBool( &_msgBufPtr, &_msgBufSize,
+                                               &isConnected ))
     {
         goto error_unpack;
     }
 
     // Call the registered handler
-    if ( _handlerRef_aws_AddSubscribeEventHandler != NULL )
+    if ( _handlerRef_le_data_AddConnectionStateHandler != NULL )
     {
-        _handlerRef_aws_AddSubscribeEventHandler(payload, contextPtr );
+        _handlerRef_le_data_AddConnectionStateHandler(intfName, isConnected, contextPtr );
     }
     else
     {
@@ -1013,12 +616,14 @@ error_unpack:
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add handler function for EVENT 'aws_SubscribeEvent'
+ * Add handler function for EVENT 'le_data_ConnectionState'
+ *
+ * This event provides information on connection state changes
  */
 //--------------------------------------------------------------------------------------------------
-aws_SubscribeEventHandlerRef_t aws_AddSubscribeEventHandler
+le_data_ConnectionStateHandlerRef_t le_data_AddConnectionStateHandler
 (
-    aws_SubscribeEventHandlerFunc_t handlerPtr,
+    le_data_ConnectionStateHandlerFunc_t handlerPtr,
         ///< [IN]
     void* contextPtr
         ///< [IN]
@@ -1032,7 +637,7 @@ aws_SubscribeEventHandlerRef_t aws_AddSubscribeEventHandler
     __attribute__((unused)) uint8_t* _msgBufPtr;
     __attribute__((unused)) size_t _msgBufSize;
 
-    aws_SubscribeEventHandlerRef_t _result;
+    le_data_ConnectionStateHandlerRef_t _result;
 
     // Range check values, if appropriate
 
@@ -1040,7 +645,7 @@ aws_SubscribeEventHandlerRef_t aws_AddSubscribeEventHandler
     // Create a new message object and get the message buffer
     _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_aws_AddSubscribeEventHandler;
+    _msgPtr->id = _MSGID_le_data_AddConnectionStateHandler;
     _msgBufPtr = _msgPtr->buffer;
     _msgBufSize = _MAX_MSG_SIZE;
 
@@ -1115,12 +720,12 @@ error_unpack:
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Remove handler function for EVENT 'aws_SubscribeEvent'
+ * Remove handler function for EVENT 'le_data_ConnectionState'
  */
 //--------------------------------------------------------------------------------------------------
-void aws_RemoveSubscribeEventHandler
+void le_data_RemoveConnectionStateHandler
 (
-    aws_SubscribeEventHandlerRef_t handlerRef
+    le_data_ConnectionStateHandlerRef_t handlerRef
         ///< [IN]
 )
 {
@@ -1138,7 +743,7 @@ void aws_RemoveSubscribeEventHandler
     // Create a new message object and get the message buffer
     _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_aws_RemoveSubscribeEventHandler;
+    _msgPtr->id = _MSGID_le_data_RemoveConnectionStateHandler;
     _msgBufPtr = _msgPtr->buffer;
     _msgBufSize = _MAX_MSG_SIZE;
 
@@ -1153,7 +758,7 @@ void aws_RemoveSubscribeEventHandler
     LE_FATAL_IF(clientDataPtr==NULL, "Invalid reference");
     le_ref_DeleteRef(_HandlerRefMap, handlerRef);
     _UNLOCK
-    handlerRef = (aws_SubscribeEventHandlerRef_t)clientDataPtr->handlerRef;
+    handlerRef = (le_data_ConnectionStateHandlerRef_t)clientDataPtr->handlerRef;
     le_mem_Release(clientDataPtr);
     LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize,
                                      handlerRef ));
@@ -1182,6 +787,1082 @@ void aws_RemoveSubscribeEventHandler
     le_msg_ReleaseMsg(_responseMsgRef);
 
     return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request the default data connection
+ *
+ * @return
+ *      - Reference to the data connection (to be used later for releasing the connection)
+ *      - NULL if the data connection requested could not be processed
+ */
+//--------------------------------------------------------------------------------------------------
+le_data_RequestObjRef_t le_data_Request
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_data_RequestObjRef_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_Request;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release a previously requested data connection
+ */
+//--------------------------------------------------------------------------------------------------
+void le_data_Release
+(
+    le_data_RequestObjRef_t requestRef
+        ///< [IN] Reference to a previously requested data connection
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_Release;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize,
+                                                  requestRef ));
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+    return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the rank of the technology used for the data connection service
+ *
+ * @return
+ *      - @ref LE_OK if the technology is added to the list
+ *      - @ref LE_BAD_PARAMETER if the technology is unknown
+ *      - @ref LE_UNSUPPORTED if the technology is not available
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_SetTechnologyRank
+(
+    uint32_t rank,
+        ///< [IN] Rank of the used technology
+    le_data_Technology_t technology
+        ///< [IN] Technology
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_result_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_SetTechnologyRank;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+    LE_ASSERT(le_pack_PackUint32( &_msgBufPtr, &_msgBufSize,
+                                                  rank ));
+    LE_ASSERT(le_pack_PackUint32( &_msgBufPtr, &_msgBufSize,
+                                                  technology ));
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackResult( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the first technology to use
+ * @return
+ *      - One of the technologies from @ref le_data_Technology_t enumerator if the list is not empty
+ *      - @ref LE_DATA_MAX if the list is empty
+ */
+//--------------------------------------------------------------------------------------------------
+le_data_Technology_t le_data_GetFirstUsedTechnology
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_data_Technology_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_GetFirstUsedTechnology;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackUint32( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the next technology to use
+ * @return
+ *      - One of the technologies from @ref le_data_Technology_t enumerator if the list is not empty
+ *      - @ref LE_DATA_MAX if the list is empty or the end of the list is reached
+ */
+//--------------------------------------------------------------------------------------------------
+le_data_Technology_t le_data_GetNextUsedTechnology
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_data_Technology_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_GetNextUsedTechnology;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackUint32( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the technology currently used for the default data connection
+ *
+ * @return
+ *      - One of the technologies from @ref le_data_Technology_t enumerator
+ *      - @ref LE_DATA_MAX if the current technology is not set
+ *
+ * @note The supported technologies are @ref LE_DATA_WIFI and @ref LE_DATA_CELLULAR
+ */
+//--------------------------------------------------------------------------------------------------
+le_data_Technology_t le_data_GetTechnology
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_data_Technology_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_GetTechnology;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackUint32( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the default route activation status for the data connection service interface.
+ *
+ * @return
+ *      - true:  the default route is set by the data connection service
+ *      - false: the default route is not set by the data connection service
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_data_GetDefaultRouteStatus
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    bool _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_GetDefaultRouteStatus;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackBool( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a route on the data connection service interface, if the data session is connected using
+ * the cellular technology and has an IPv4 or IPv6 address.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    cellular technology not currently used
+ *      - LE_BAD_PARAMETER  incorrect IP address
+ *      - LE_FAULT          for all other errors
+ *
+ * @note Limitations:
+ *      - only IPv4 is supported for the moment
+ *      - route only added for a cellular connection
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_AddRoute
+(
+    const char* LE_NONNULL ipDestAddrStr
+        ///< [IN] The destination IP address in dotted
+        ///< format
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_result_t _result;
+
+    // Range check values, if appropriate
+    if ( strnlen(ipDestAddrStr, 45) > 45 )
+    {
+        LE_FATAL("strnlen(ipDestAddrStr, 45) > 45");
+    }
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_AddRoute;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+    LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
+                                  ipDestAddrStr, 45 ));
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackResult( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete a route on the data connection service interface, if the data session is connected using
+ * the cellular technology and has an IPv4 or IPv6 address.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    cellular technology not currently used
+ *      - LE_BAD_PARAMETER  incorrect IP address
+ *      - LE_FAULT          for all other errors
+ *
+ * @note Limitations:
+ *      - only IPv4 is supported for the moment
+ *      - route only removed for a cellular connection
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_DelRoute
+(
+    const char* LE_NONNULL ipDestAddrStr
+        ///< [IN] The destination IP address in dotted
+        ///< format
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_result_t _result;
+
+    // Range check values, if appropriate
+    if ( strnlen(ipDestAddrStr, 45) > 45 )
+    {
+        LE_FATAL("strnlen(ipDestAddrStr, 45) > 45");
+    }
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_DelRoute;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+    LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
+                                  ipDestAddrStr, 45 ));
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackResult( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the cellular profile index used by the data connection service when the cellular technology
+ * is active.
+ *
+ * @return
+ *      - Cellular profile index
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t le_data_GetCellularProfileIndex
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    int32_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_GetCellularProfileIndex;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackInt32( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cellular profile index used by the data connection service when the cellular technology
+ * is active.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if the profile index is invalid
+ *      - LE_BUSY           the cellular connection is in use
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_SetCellularProfileIndex
+(
+    int32_t profileIndex
+        ///< [IN] Cellular profile index to be used
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_result_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_SetCellularProfileIndex;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+    LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize,
+                                                  profileIndex ));
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackResult( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the date from the configured server using the configured time protocol.
+ *
+ * @warning An active data connection is necessary to retrieve the date.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if a parameter is incorrect
+ *      - LE_FAULT          if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_GetDate
+(
+    uint16_t* yearPtr,
+        ///< [OUT] UTC Year A.D. [e.g. 2017].
+    uint16_t* monthPtr,
+        ///< [OUT] UTC Month into the year [range 1...12].
+    uint16_t* dayPtr
+        ///< [OUT] UTC Days into the month [range 1...31].
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_result_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_GetDate;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+    uint32_t _requiredOutputs = 0;
+    _requiredOutputs |= ((!!(yearPtr)) << 0);
+    _requiredOutputs |= ((!!(monthPtr)) << 1);
+    _requiredOutputs |= ((!!(dayPtr)) << 2);
+    LE_ASSERT(le_pack_PackUint32(&_msgBufPtr, &_msgBufSize, _requiredOutputs));
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackResult( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+    if (yearPtr &&
+        (!le_pack_UnpackUint16( &_msgBufPtr, &_msgBufSize,
+                                               yearPtr )))
+    {
+        goto error_unpack;
+    }
+    if (monthPtr &&
+        (!le_pack_UnpackUint16( &_msgBufPtr, &_msgBufSize,
+                                               monthPtr )))
+    {
+        goto error_unpack;
+    }
+    if (dayPtr &&
+        (!le_pack_UnpackUint16( &_msgBufPtr, &_msgBufSize,
+                                               dayPtr )))
+    {
+        goto error_unpack;
+    }
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the time from the configured server using the configured time protocol.
+ *
+ * @warning An active data connection is necessary to retrieve the time.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if a parameter is incorrect
+ *      - LE_FAULT          if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_GetTime
+(
+    uint16_t* hoursPtr,
+        ///< [OUT] UTC Hours into the day [range 0..23].
+    uint16_t* minutesPtr,
+        ///< [OUT] UTC Minutes into the hour [range 0..59].
+    uint16_t* secondsPtr,
+        ///< [OUT] UTC Seconds into the minute [range 0..59].
+    uint16_t* millisecondsPtr
+        ///< [OUT] UTC Milliseconds into the second [range 0..999].
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    le_result_t _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_le_data_GetTime;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+    uint32_t _requiredOutputs = 0;
+    _requiredOutputs |= ((!!(hoursPtr)) << 0);
+    _requiredOutputs |= ((!!(minutesPtr)) << 1);
+    _requiredOutputs |= ((!!(secondsPtr)) << 2);
+    _requiredOutputs |= ((!!(millisecondsPtr)) << 3);
+    LE_ASSERT(le_pack_PackUint32(&_msgBufPtr, &_msgBufSize, _requiredOutputs));
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackResult( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+    if (hoursPtr &&
+        (!le_pack_UnpackUint16( &_msgBufPtr, &_msgBufSize,
+                                               hoursPtr )))
+    {
+        goto error_unpack;
+    }
+    if (minutesPtr &&
+        (!le_pack_UnpackUint16( &_msgBufPtr, &_msgBufSize,
+                                               minutesPtr )))
+    {
+        goto error_unpack;
+    }
+    if (secondsPtr &&
+        (!le_pack_UnpackUint16( &_msgBufPtr, &_msgBufSize,
+                                               secondsPtr )))
+    {
+        goto error_unpack;
+    }
+    if (millisecondsPtr &&
+        (!le_pack_UnpackUint16( &_msgBufPtr, &_msgBufSize,
+                                               millisecondsPtr )))
+    {
+        goto error_unpack;
+    }
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
 }
 
 
@@ -1223,8 +1904,8 @@ static void ClientIndicationRecvHandler
     // Trigger the appropriate event
     switch (msgPtr->id)
     {
-        case _MSGID_aws_AddSubscribeEventHandler :
-            le_event_QueueFunctionToThread(callersThreadRef, _Handle_aws_AddSubscribeEventHandler, msgRef, clientDataPtr);
+        case _MSGID_le_data_AddConnectionStateHandler :
+            le_event_QueueFunctionToThread(callersThreadRef, _Handle_le_data_AddConnectionStateHandler, msgRef, clientDataPtr);
             break;
 
         default:

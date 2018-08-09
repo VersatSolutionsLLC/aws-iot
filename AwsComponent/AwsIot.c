@@ -14,12 +14,15 @@
 #include "aws_iot_shadow_interface.h"
 #include "test_AwsIot.h"
 
+#define PAYLOAD_SIZE 500
 #define HOST_ADDRESS_SIZE 255
+#define SUBSCRIBE_EVENT_NAME 		  "aws_subs_event"
 #define AWS_IOT_SUBSCRIBE_THREAD_NAME "aws_subs_thread"
+
 
 void _stopYieldThread();
 static int _numSubcribes;
-
+static le_event_Id_t subEventId;
 static bool unsubscribe = false;
 
 static le_thread_Ref_t yieldThread;
@@ -252,7 +255,7 @@ int aws_disconnect() {
 }
 
 /**================================================================================
- * Task  			: Invoked as callback handler
+ * Task  			: Invoked as callback handlerRef
  * Objective		:
  * Return 			: None
  * ================================================================================
@@ -468,10 +471,21 @@ void _subscribeCallback(AWS_IoT_Client *pClient, char *topicName,
 			topicNameLen, topicName, (int ) params->payloadLen,
 			(char * ) params->payload);
 	LE_DEBUG("======================================================================");
+
+	// Dispatch the event
+	le_event_Report(subEventId,(char*)params->payload,strlen(params->payload));
+
 }
 
-/**
+/**================================================================================
+ * Task  			:Invokes internal aws_iot_mqtt_yield function iteratively
  *
+ * Objective		: Periodically check socket buffer whether subscribed messages
+ * 					  are available and exits if fails. On failure ,the current
+ * 					  thread running this code will exit and merge with the main
+ * 					  thread.
+ * Return 			: null pointer
+ * ================================================================================
  */
 static void* _yield(void* timeout) {
 
@@ -496,14 +510,19 @@ static void* _yield(void* timeout) {
 }
 
 /**================================================================================
- * Task  			:
+ * Task  			: Invokes internal aws_iot_mqtt_subscribe to subscribe a
+ * 					  a topic from MQTT host
  *
  * Objective		:
- * Return 			: None on success
+ * Return 			: Error code
  * ================================================================================
  */
 int aws_Subscribe(const char* sTopic, int32_t topicLen, int32_t qosType) {
 	IoT_Error_t rc = FAILURE;
+
+	// Create event
+	subEventId = le_event_CreateId(SUBSCRIBE_EVENT_NAME,PAYLOAD_SIZE);
+
 	LE_DEBUG("Subscribing on topic : %s", sTopic);
 	LOCK();
 	rc = aws_iot_mqtt_subscribe(&client, sTopic, topicLen, qosType,
@@ -530,8 +549,12 @@ int aws_Subscribe(const char* sTopic, int32_t topicLen, int32_t qosType) {
 	return rc;
 }
 
-/**
- * Stop yield thread
+/**================================================================================
+ * Task  			: Terminates thread that calls the internal _yield function.
+ *
+ * Objective		:
+ * Return 			: None
+ * ================================================================================
  */
 void _stopYieldThread() {
 	unsubscribe = true;
@@ -542,8 +565,14 @@ void _stopYieldThread() {
 	LE_DEBUG("Yield thread is joined and terminated");
 }
 
-/**
- * Unsubscribe to a particular topic
+/**================================================================================
+ * Task  			: Unsubscribe topic that has already been subscribed
+ *
+ * Objective		: Unsubscribe subscribed topic and terminates the thread
+ * 					  running the _yield function if no more subscription is
+ * 					  present.
+ * Return 			: Error code
+ * ================================================================================
  */
 int aws_UnSubscribe(const char* sTopic, int32_t topicLen) {
 	IoT_Error_t rc = FAILURE;
@@ -566,6 +595,59 @@ int aws_UnSubscribe(const char* sTopic, int32_t topicLen) {
 	return rc;
 }
 
+/**================================================================================
+ * Task				: On event dispatch server layer handler function is
+ *  				  called  to unpack specified items from the Event
+ * 					  Report and call the client's handler function
+ * Objective		:
+ * Return 			: Error code
+ *
+ * ================================================================================
+ */
+static void _serverHandlerFunc
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+	aws_SubscribeEventHandlerFunc_t clientHandlerFuncRef = secondLayerHandlerFunc;
+	clientHandlerFuncRef(reportPtr, le_event_GetContextPtr());
+}
+
+/**================================================================================
+ * Task				: Add handler function for EVENT 'aws_SubscribeEvent'
+ * Objective		:
+ * Return 			: Event handler reference of 'aws_SubscribeEvent'EVENT
+ *
+ * ================================================================================
+ */
+aws_SubscribeEventHandlerRef_t aws_AddSubscribeEventHandler
+(
+    aws_SubscribeEventHandlerFunc_t clientHandlerFunc,
+    void* contextPtr
+) {
+	le_event_HandlerRef_t handlerRef = le_event_AddLayeredHandler
+			("SubscribeHandler",
+					subEventId,
+					_serverHandlerFunc,
+					(le_event_HandlerFunc_t)clientHandlerFunc);
+
+	le_event_SetContextPtr(handlerRef, contextPtr);
+	return (aws_SubscribeEventHandlerRef_t)(handlerRef);
+}
+/**================================================================================
+ * Task				: Remove handler function for EVENT 'aws_SubscribeEvent'
+ * Objective		:
+ * Return 			: Event handler reference of 'aws_SubscribeEvent'EVENT
+ *
+ * ================================================================================
+ */
+void aws_RemoveSubscribeEventHandler
+(
+    aws_SubscribeEventHandlerRef_t handlerRef
+) {
+	le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
 COMPONENT_INIT {
 	Mutex = le_mutex_CreateNonRecursive("yieldMutex");
 	MutexSubscribe = le_mutex_CreateNonRecursive("subMutex");
@@ -580,7 +662,6 @@ COMPONENT_INIT {
 	// Initialize connection to the MQTT broker
 	_initConnection();
 
-	LE_DEBUG("================ S T A R T   T E S T ====================");
 	IOT_TEST();
 }
 

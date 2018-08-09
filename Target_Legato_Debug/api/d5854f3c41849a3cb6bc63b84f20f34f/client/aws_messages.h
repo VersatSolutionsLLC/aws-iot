@@ -15,7 +15,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "23b97d86b38a1ba61e4edb4ec6cb6eef"
+#define PROTOCOL_ID_STR "6dc58e014c6abb7311fba72ded2e76f4"
 
 #ifdef MK_TOOLS_BUILD
     extern const char** aws_ServiceInstanceNamePtr;
@@ -40,6 +40,8 @@ _Message_t;
 #define _MSGID_aws_Subscribe 2
 #define _MSGID_aws_UnSubscribe 3
 #define _MSGID_aws_disconnect 4
+#define _MSGID_aws_AddSubscribeEventHandler 5
+#define _MSGID_aws_RemoveSubscribeEventHandler 6
 
 
 #endif // AWS_MESSAGES_H_INCLUDE_GUARD
