@@ -36,6 +36,7 @@ static le_mutex_Ref_t MutexSubscribe;
 
 static AWS_IoT_Client client;
 void _stopYieldThread();
+
 typedef struct {
 	char rootCA[PATH_MAX + 1];
 	char clientCrt[PATH_MAX + 1];
@@ -648,6 +649,7 @@ void aws_RemoveSubscribeEventHandler
 ) {
 	le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
 }
+
 COMPONENT_INIT {
 	Mutex = le_mutex_CreateNonRecursive("yieldMutex");
 	MutexSubscribe = le_mutex_CreateNonRecursive("subMutex");
