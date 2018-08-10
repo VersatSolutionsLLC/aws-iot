@@ -19,7 +19,6 @@
 #define SUBSCRIBE_EVENT_NAME 		  "aws_subs_event"
 #define AWS_IOT_SUBSCRIBE_THREAD_NAME "aws_subs_thread"
 
-
 void _stopYieldThread();
 static int _numSubcribes;
 static le_event_Id_t subEventId;
@@ -328,8 +327,8 @@ void _initConnection() {
 
 	LOCK();
 	if (state == CLIENT_STATE_INITIALIZED) {
-			UNLOCK();
-			return;
+		UNLOCK();
+		return;
 	}
 	// if already Inited, return.
 
@@ -354,6 +353,7 @@ void _initConnection() {
 	mqttInitParams.pHostURL = connectionParams.host;
 	mqttInitParams.port = connectionParams.port;
 	// If TLS parameters not defined. Try to connect the MQTT host without TLS encryption.
+	//TODO:Test Pending
 	if (tlsParams.clientCrt != NULL || strlen(tlsParams.clientCrt) != 0) {
 		mqttInitParams.pRootCALocation = tlsParams.rootCA;
 		mqttInitParams.pDeviceCertLocation = tlsParams.clientCrt;
@@ -387,10 +387,10 @@ int aws_Connect() {
 	LOCK();
 
 	if (state >= CLIENT_STATE_CONNECTED_IDLE
-				&& state <= CLIENT_STATE_CONNECTED_WAIT_FOR_CB_RETURN) {
-			UNLOCK();
-			LE_DEBUG("MQTT host is already connected to client");
-			return SUCCESS;
+			&& state <= CLIENT_STATE_CONNECTED_WAIT_FOR_CB_RETURN) {
+		UNLOCK();
+		LE_DEBUG("MQTT host is already connected to client");
+		return SUCCESS;
 	}
 	IoT_Error_t rc = FAILURE;
 	IoT_Client_Connect_Params connectParams = iotClientConnectParamsDefault;
@@ -401,15 +401,18 @@ int aws_Connect() {
 	connectParams.pClientID = AWS_IOT_MQTT_CLIENT_ID;
 	connectParams.clientIDLen = (uint16_t) strlen(AWS_IOT_MQTT_CLIENT_ID);
 	connectParams.isWillMsgPresent = false;
-	LE_DEBUG("Connecting to MQTT host '%s'...",AWS_IOT_MQTT_HOST);
+	LE_DEBUG("Connecting to MQTT host '%s'...", AWS_IOT_MQTT_HOST);
 	rc = aws_iot_mqtt_connect(&client, &connectParams);
 	if (rc != SUCCESS) {
 		UNLOCK();
 		state = _getConnectionState();
-		LE_DEBUG("Failed to connect to MQTT host.. Network error(%d) and connection error(%d) is identified",rc,state);
+		LE_DEBUG(
+				"Failed to connect to MQTT host.. Network error(%d) and connection error(%d) is identified",
+				rc, state);
 		return rc;
 	}
-	LE_DEBUG("MQTT client '%s' is now connected to MQTT host",connectParams.pClientID);
+	LE_DEBUG("MQTT client '%s' is now connected to MQTT host",
+			connectParams.pClientID);
 	// Enable Auto Reconnect functionality. Minimum and Maximum time of Exponential backoff are set in aws_iot_config.h
 	//  #AWS_IOT_MQTT_MIN_RECONNECT_WAIT_INTERVAL
 	//  #AWS_IOT_MQTT_MAX_RECONNECT_WAIT_INTERVAL
@@ -444,12 +447,13 @@ int aws_Publish(const char* topic, const int topicLen, int32_t qosType,
 	if (rc == MQTT_REQUEST_TIMEOUT_ERROR) {
 		LE_ERROR(
 				"QOS1 publish ack for activity record not received. Loss of connectivity.");
-	} else if (rc == -13 ) {
+	} else if (rc == -13) {
 		LE_ERROR("Unable to publish topic. Network is disconnected");
-	} else if ( rc != SUCCESS ) {
+	} else if (rc != SUCCESS) {
 		LE_ERROR("Activity records publish failure %d", rc);
 	} else {
-		LE_DEBUG("Published message (%s) with payload (%s) to host",topic,payload);
+		LE_DEBUG("Published message (%s) with payload (%s) to host", topic,
+				payload);
 	}
 
 	return rc;
@@ -467,14 +471,17 @@ void _subscribeCallback(AWS_IoT_Client *pClient, char *topicName,
 		uint16_t topicNameLen, IoT_Publish_Message_Params *params, void *pData) {
 	IOT_UNUSED(pData);
 	IOT_UNUSED(pClient);
-	LE_DEBUG("=====================================================================");
+	LE_DEBUG(
+			"=====================================================================");
 	LE_DEBUG("Got Published message, Topic Name : %.*s\tPayload : %.*s",
 			topicNameLen, topicName, (int ) params->payloadLen,
 			(char * ) params->payload);
-	LE_DEBUG("======================================================================");
+	LE_DEBUG(
+			"======================================================================");
 
 	// Dispatch the event
-	le_event_Report(subEventId,(char*)params->payload,strlen(params->payload));
+	le_event_Report(subEventId, (char*) params->payload,
+			strlen(params->payload));
 
 }
 
@@ -522,7 +529,7 @@ int aws_Subscribe(const char* sTopic, int32_t topicLen, int32_t qosType) {
 	IoT_Error_t rc = FAILURE;
 
 	// Create event
-	subEventId = le_event_CreateId(SUBSCRIBE_EVENT_NAME,PAYLOAD_SIZE);
+	subEventId = le_event_CreateId(SUBSCRIBE_EVENT_NAME, PAYLOAD_SIZE);
 
 	LE_DEBUG("Subscribing on topic : %s", sTopic);
 	LOCK();
@@ -539,7 +546,8 @@ int aws_Subscribe(const char* sTopic, int32_t topicLen, int32_t qosType) {
 
 		// Create thread to call yield function for first subscription
 		unsubscribe = false;
-		yieldThread = le_thread_Create(AWS_IOT_SUBSCRIBE_THREAD_NAME, _yield, (void*) YIELD_TIMEOUT);
+		yieldThread = le_thread_Create(AWS_IOT_SUBSCRIBE_THREAD_NAME, _yield,
+				(void*) YIELD_TIMEOUT);
 		le_thread_SetJoinable(yieldThread);
 		le_thread_Start(yieldThread);
 		_numSubcribes++;
@@ -587,7 +595,7 @@ int aws_UnSubscribe(const char* sTopic, int32_t topicLen) {
 	if (SUCCESS != rc) {
 		LE_ERROR("Error UnSubscribing topic %s: \nErrorType(%d) = %s ", sTopic,
 				rc, _getErrorTypeFromCode(rc));
-		LE_DEBUG("Total no of subscription = %d ",_numSubcribes);
+		LE_DEBUG("Total no of subscription = %d ", _numSubcribes);
 	} else if (--_numSubcribes <= 0) {
 		_stopYieldThread();
 		_numSubcribes = 0;
@@ -605,13 +613,12 @@ int aws_UnSubscribe(const char* sTopic, int32_t topicLen) {
  *
  * ================================================================================
  */
-static void _serverHandlerFunc
-(
-    void* reportPtr,
-    void* secondLayerHandlerFunc
-)
-{
-	aws_SubscribeEventHandlerFunc_t clientHandlerFuncRef = secondLayerHandlerFunc;
+static void _serverHandlerFunc(void* reportPtr, void* secondLayerHandlerFunc) {
+
+	LE_DEBUG("Server layered handler called.");
+	aws_SubscribeEventHandlerFunc_t clientHandlerFuncRef =
+			secondLayerHandlerFunc;
+	LE_DEBUG("Calling cliend handler function.");
 	clientHandlerFuncRef(reportPtr, le_event_GetContextPtr());
 }
 
@@ -622,19 +629,21 @@ static void _serverHandlerFunc
  *
  * ================================================================================
  */
-aws_SubscribeEventHandlerRef_t aws_AddSubscribeEventHandler
-(
-    aws_SubscribeEventHandlerFunc_t clientHandlerFunc,
-    void* contextPtr
-) {
-	le_event_HandlerRef_t handlerRef = le_event_AddLayeredHandler
-			("SubscribeHandler",
-					subEventId,
-					_serverHandlerFunc,
-					(le_event_HandlerFunc_t)clientHandlerFunc);
+aws_SubscribeEventHandlerRef_t aws_AddSubscribeEventHandler(
+		aws_SubscribeEventHandlerFunc_t clientHandlerFunc, void* contextPtr) {
+	LE_DEBUG("Adding subscribe layered handler.");
+	le_event_HandlerRef_t handlerRef = le_event_AddLayeredHandler(
+			"SubscribeHandler", subEventId, _serverHandlerFunc,
+			(le_event_HandlerFunc_t) clientHandlerFunc);
+	if (handlerRef != NULL) {
+		LE_DEBUG("Successfully added subscribe layered handler.");
+		le_event_SetContextPtr(handlerRef, contextPtr);
+	}
+	else{
+		LE_ERROR("Failed to add subscribe handler!");
+	}
 
-	le_event_SetContextPtr(handlerRef, contextPtr);
-	return (aws_SubscribeEventHandlerRef_t)(handlerRef);
+	return (aws_SubscribeEventHandlerRef_t) (handlerRef);
 }
 /**================================================================================
  * Task				: Remove handler function for EVENT 'aws_SubscribeEvent'
@@ -643,11 +652,10 @@ aws_SubscribeEventHandlerRef_t aws_AddSubscribeEventHandler
  *
  * ================================================================================
  */
-void aws_RemoveSubscribeEventHandler
-(
-    aws_SubscribeEventHandlerRef_t handlerRef
-) {
-	le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+void aws_RemoveSubscribeEventHandler(aws_SubscribeEventHandlerRef_t handlerRef) {
+	LE_DEBUG("Removing subscribe layered handler.");
+	le_event_RemoveHandler((le_event_HandlerRef_t) handlerRef);
+	LE_DEBUG("Successfully removed subscribe layered handler.");
 }
 
 COMPONENT_INIT {
