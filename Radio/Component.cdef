@@ -14,6 +14,8 @@ requires:
     api:
     {
         modemServices/le_mrc.api
+        modemServices/le_info.api
+        modemServices/le_sim.api
         modemServices/le_temp.api
         le_data.api
     }

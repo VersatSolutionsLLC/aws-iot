@@ -29,3 +29,11 @@ FUNCTION Disconnect
 (
 	
 );
+FUNCTION bool IsConnected
+(
+	
+);
+//FUNCTION NeighbourInfo
+//(
+//	
+//);

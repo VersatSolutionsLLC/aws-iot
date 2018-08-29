@@ -1,6 +1,7 @@
 executables:
 {
-	awsIot = ( AwsComponent )
+	readConfig = ( ReadConfig )
+	awsIot = (  AwsComponent)
 	radio = ( Radio )
 	publish = (PublishRadio)
 	gps = (Gps)
@@ -20,6 +21,15 @@ requires:
 	        /etc/nsswitch.conf /etc/
 	        /etc/hosts /etc/
 	        /etc/resolv.conf /etc/
+	        
+	        // Certificates to initialize AWS_IOT 
+	        /etc/aws/certs/VeriSign.pem  /usr/bin/VeriSign.pem
+        	/etc/aws/certs/7f1b877b23-certificate.pem.crt  /usr/bin/7f1b877b23-certificate.pem.crt
+        	/etc/aws/certs/7f1b877b23-private.pem.key  /usr/bin/7f1b877b23-private.pem.key
+        	
+        	// Configuration file
+        	/etc/aws/config.ini /usr/tests/config.ini
+        	
     }
 
 }
@@ -33,6 +43,7 @@ processes:
 
 	run:
 	{
+		( readConfig )
 		( awsIot )
 		( radio )
 		( publish )
@@ -47,15 +58,21 @@ bindings:
     publish.PublishRadio.radio -> radio.Radio.radio
     publish.PublishRadio.aws -> awsIot.AwsComponent.aws
     radio.Radio.le_mrc -> modemService.le_mrc
+    radio.Radio.le_info -> modemService.le_info
+    radio.Radio.le_sim -> modemService.le_sim
     radio.Radio.le_temp -> modemService.le_temp
     radio.Radio.le_data -> dataConnectionService.le_data
     gps.Gps.le_gnss -> positioningService.le_gnss
     publish.PublishRadio.gps -> gps.Gps.gps
 	subEXE.subscribe.aws -> awsIot.AwsComponent.aws
+	subEXE.subscribe.radio -> radio.Radio.radio
+	subEXE.subscribe.config -> readConfig.ReadConfig.config
+  	awsIot.AwsComponent.config -> readConfig.ReadConfig.config
 }
 extern:
 {
     aws = awsIot.AwsComponent.aws
+    config = readConfig.ReadConfig.config
 }
 version: 1.0.0
 maxFileSystemBytes: 512K

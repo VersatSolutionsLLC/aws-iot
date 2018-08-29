@@ -1,0 +1,13 @@
+sources:
+{
+	configDefinition.c
+	minIni.c
+}
+
+provides:
+{
+	api:
+	{
+		config = ReadConfig/config.api
+	}
+}

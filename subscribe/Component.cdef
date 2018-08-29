@@ -2,10 +2,16 @@ sources:
 {
 	subscribe.c
 }
+cflags:
+{
+	-I $CURDIR/../ReadConfig/
+}
 requires:
 {
     api:
     {
+    	Radio/radio.api
         AwsComponent/aws.api
+        ReadConfig/config.api
     }
 }

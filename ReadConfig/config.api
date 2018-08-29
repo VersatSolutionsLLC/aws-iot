@@ -1,0 +1,38 @@
+FUNCTION sGetValue
+(
+	string section[100] IN,
+	string key[100] IN,
+	string defaultValue[100] IN,
+	string keyValue[1024] OUT
+);
+FUNCTION iGetValue
+(
+	string section[100] IN,
+	string key[100] IN,
+	int32 defaultValue IN,
+	int32 keyValue OUT
+);
+FUNCTION fGetValue
+(
+	string section[100] IN,
+	string key[100] IN,
+	double defaultValue IN,
+	double keyValue OUT
+);
+FUNCTION boolGetValue
+(
+	string section[100] IN,
+	string key[100] IN,
+	int32 defaultValue IN,
+	int32 keyValue OUT
+);
+FUNCTION sPutValue
+(
+	string section[100] IN,
+	string key[50] IN,
+	string keyValue[50] IN
+);
+FUNCTION test
+(
+	string params[100] OUT
+);

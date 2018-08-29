@@ -2,7 +2,8 @@
 #include "interfaces.h"
 
 char previousParams[1024];
-const char* _FRM_JSON = "{\"temp\":%s,\"%s\":%s,\"timestamp\":%d,\"loc\":%s}";
+const char* _FRM_JSON =
+		"{\"temp\":%s,\"%s\":%s,\"timestamp\":%d,\"loc\":%s,\"imei\":%s,\"imsi\":%s}";
 const char* _FRM_JSON_GSM = "{\"rssi\":%s,\"ber\":%s}";
 const char* _FRM_JSON_LTE =
 		"{\"rssi\":%s,\"rsrp\":%s,\"rsrq\":%s,\"snr\":%s,\"bler\":%s}";
@@ -62,23 +63,27 @@ int _getJson(char* json, const int jsonLength) {
 	char locationJson[1024];
 
 	radio_Info(params, 1024);
+	//radio_NeighbourInfo();
 	if (strcmp(previousParams, params) == 0) {
 		strcpy(previousParams, params);
 		return 0;
 	}
 	strcpy(previousParams, params);
 	char** tokens = _strSplit(params, ',');
-	int temperature = 1;
-	int rssi = 2;
+	int imei = 0;
+	int imsi = 1;
+	int ratPos = 2;
+	int temperature = 3;
+	int rssi = 4;
 
-	int rsrp = 3;
-	int rsrq = 4;
-	int snr = 5;
-	int bler = 1;
+	int rsrp = 5;
+	int rsrq = 6;
+	int snr = 7;
 
-	int ber = 3;
 
-	char *rat = *(tokens);
+	int ber = 5;int bler = 8;
+
+	char *rat = *(tokens + ratPos);
 	u_int32_t timestamp = (unsigned) time(NULL);
 
 	int cmpGSM = strcmp(rat, "GSM");
@@ -92,7 +97,6 @@ int _getJson(char* json, const int jsonLength) {
 				*(tokens + rsrp), *(tokens + rsrq), *(tokens + snr),
 				*(tokens + bler));
 	}
-	free(tokens);
 
 	int lat = 0;
 	int lon = 1;
@@ -102,14 +106,15 @@ int _getJson(char* json, const int jsonLength) {
 	int vAcc = 5;
 
 	gps_GetLocation(params, 1024);
-	char**  gpsTokens = _strSplit(params, ',');
+	char** gpsTokens = _strSplit(params, ',');
 	snprintf(locationJson, jsonLength, _FRM_JSON_LOC, *(gpsTokens + lat),
 			*(gpsTokens + lon), *(gpsTokens + alt), *(gpsTokens + altWgs84),
 			*(gpsTokens + hAcc), *(gpsTokens + vAcc));
 
 	if (json != NULL)
 		snprintf(json, jsonLength, _FRM_JSON, *(tokens + temperature), rat,
-				radioJson, timestamp, locationJson);
+				radioJson, timestamp, locationJson, *(tokens + imei), *(tokens + imsi));
+	free(tokens);
 
 	free(gpsTokens);
 	return strlen(json);
@@ -119,12 +124,13 @@ int _getJson(char* json, const int jsonLength) {
  * ON successful connection or disconnection of mobile data the function called with proper
  * interface name and isConnected flag.
  */
-static void _connectionHandler(char* infName, bool isConnected, void* contextPtr){
-	if(!isConnected){
+static void _connectionHandler(char* infName, bool isConnected,
+		void* contextPtr) {
+	if (!isConnected) {
 		LE_WARN("Device not connect to internet!");
 		return;
 	}
-	LE_INFO("Device connected to internet with interface name %s",infName);
+	LE_INFO("Device connected to internet with interface name %s", infName);
 
 	const char *topic = "versat/radio";
 	int32_t qosType = 1;
@@ -136,9 +142,10 @@ static void _connectionHandler(char* infName, bool isConnected, void* contextPtr
 	int rc = 0;
 
 	/*Publish topic to MQTT client*/
-	int l = 5;
+	int l = 50;
 	while (rc == 0) {
 		int32_t jsonLen = _getJson(json, 1024);
+		LE_DEBUG("Got JSON with length %d", jsonLen);
 		//Skipping publish for identical data.
 		if (jsonLen == 0) {
 			LE_DEBUG("Nothing to publish! Skipping...");
@@ -153,13 +160,15 @@ static void _connectionHandler(char* infName, bool isConnected, void* contextPtr
 
 }
 
-
-
 COMPONENT_INIT {
 
 	LE_INFO("=========Trying to connect MQTT Host============\n");
+	if (radio_IsConnected()) {
+		_connectionHandler("manual", true, NULL);
+	}
 
-	radio_AddDataConnectionStateHandler((radio_DataConnectionStateHandlerFunc_t)_connectionHandler, NULL);
+	radio_AddDataConnectionStateHandler(
+			(radio_DataConnectionStateHandlerFunc_t) _connectionHandler, NULL);
 
 	radio_Connect();
 

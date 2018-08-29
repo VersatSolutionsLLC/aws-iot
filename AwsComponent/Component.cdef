@@ -6,10 +6,11 @@ cflags:
 		-I $CURDIR/../AwsComponent/common
 		-I $CURDIR/../AwsComponent/jsmn
 		-I $CURDIR/../AwsComponent/include
-// -DENABLE_IOT_TEST
+		-I $CURDIR/../ReadConfig/
+		
+ 		//-DENABLE_IOT_TEST
 }
 
-		
 provides:
 {
 	api:
@@ -17,14 +18,11 @@ provides:
 		aws = AwsComponent/aws.api
 	}
 }
-
-bundles:
+requires:
 {
-	file:
+	api:
 	{
-		[r] $CURDIR/../AwsComponent/certs/VeriSign.pem  /usr/bin/VeriSign.pem
-        [r] $CURDIR/../AwsComponent/certs/7f1b877b23-certificate.pem.crt  /usr/bin/7f1b877b23-certificate.pem.crt
-        [r] $CURDIR/../AwsComponent/certs/7f1b877b23-private.pem.key  /usr/bin/7f1b877b23-private.pem.key
+		ReadConfig/config.api
 	}
 }
 

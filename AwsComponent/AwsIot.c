@@ -13,7 +13,9 @@
 #include "aws_iot_mqtt_client_interface.h"
 #include "aws_iot_shadow_interface.h"
 #include "test_AwsIot.h"
+#include "configDefinition.h"
 
+#define MAX_SIZE 100
 #define PAYLOAD_SIZE 500
 #define HOST_ADDRESS_SIZE 255
 #define SUBSCRIBE_EVENT_NAME 		  "aws_subs_event"
@@ -66,7 +68,8 @@ void _initTlsParams(const char* certPath, const char* rootCa,
 		snprintf(tlsParams.certDirectory, PATH_MAX + 1, "%s",
 		AWS_IOT_CERT_PATH);
 	} else {
-		strcpy(tlsParams.certDirectory, certPath);
+		snprintf(tlsParams.certDirectory, PATH_MAX + 1, "%s",
+				certPath);
 	}
 
 	// Root CA certificate name update
@@ -78,7 +81,8 @@ void _initTlsParams(const char* certPath, const char* rootCa,
 				tlsParams.certDirectory, AWS_IOT_ROOT_CA_FILENAME);
 
 	} else {
-		strcpy(tlsParams.rootCA, rootCa);
+		snprintf(tlsParams.rootCA, PATH_MAX + 1, "%s/%s",
+						tlsParams.certDirectory, rootCa);
 	}
 
 	// AWS_IOT certificate file name update
@@ -91,7 +95,9 @@ void _initTlsParams(const char* certPath, const char* rootCa,
 				AWS_IOT_CERTIFICATE_FILENAME);
 
 	} else {
-		strcpy(tlsParams.clientCrt, cert);
+		snprintf(tlsParams.clientCrt, PATH_MAX + 1, "%s/%s",
+						tlsParams.certDirectory,
+						cert);
 	}
 
 	// AWS_IOT Pvt Key file name update
@@ -103,7 +109,8 @@ void _initTlsParams(const char* certPath, const char* rootCa,
 				tlsParams.certDirectory, AWS_IOT_PRIVATE_KEY_FILENAME);
 
 	} else {
-		strcpy(tlsParams.clientKey, privateKey);
+		snprintf(tlsParams.clientKey, PATH_MAX + 1, "%s/%s",
+						tlsParams.certDirectory, privateKey);
 
 	}
 
@@ -642,7 +649,6 @@ aws_SubscribeEventHandlerRef_t aws_AddSubscribeEventHandler(
 	else{
 		LE_ERROR("Failed to add subscribe handler!");
 	}
-
 	return (aws_SubscribeEventHandlerRef_t) (handlerRef);
 }
 /**================================================================================
@@ -659,6 +665,35 @@ void aws_RemoveSubscribeEventHandler(aws_SubscribeEventHandlerRef_t handlerRef) 
 }
 
 COMPONENT_INIT {
+
+	char aws_host_name[MAX_SIZE];
+	char aws_cert_path[MAX_SIZE];
+	char aws_client_id[MAX_SIZE];
+	char aws_thing_name[MAX_SIZE];
+	char aws_root_CA_filename[MAX_SIZE];
+	char aws_certificate_filename[MAX_SIZE];
+	char aws_private_key_filename[MAX_SIZE];
+	int aws_port_number = 0;
+
+	config_sGetValue (AWSIOT_SECTION,KEY_HOST_NAME,"NULL",aws_host_name,100);
+	config_sGetValue (AWSIOT_SECTION,KEY_CERT_PATH,"NULL",aws_cert_path,100);
+	config_sGetValue (AWSIOT_SECTION,KEY_CLIENT_ID,"NULL",aws_client_id,100);
+	config_sGetValue (AWSIOT_SECTION,KEY_THING_NAME,"NULL",aws_thing_name,100);
+	config_sGetValue (AWSIOT_SECTION,KEY_ROOT_CA_FILE_NAME,"NULL",aws_root_CA_filename,100);
+	config_sGetValue (AWSIOT_SECTION,KEY_CERTIFICATE_FILE_NAME,"NULL",aws_certificate_filename,100);
+	config_sGetValue (AWSIOT_SECTION,KEY_PRIVATE_KEY_FILE_NAME,"NULL",aws_private_key_filename,100);
+	config_iGetValue (AWSIOT_SECTION,KEY_PORT_NUMBER,-1,&aws_port_number);
+
+	LE_DEBUG("==================Test Parameters for AWS_IOT=================");
+	LE_DEBUG("===== HOST NAME = %s",aws_host_name);
+	LE_DEBUG("===== CERT PATH = %s",aws_cert_path);
+	LE_DEBUG("===== CLIENT ID = %s",aws_client_id);
+	LE_DEBUG("===== THING NAME = %s",aws_thing_name);
+	LE_DEBUG("===== CERT FILE = %s",aws_certificate_filename);
+	LE_DEBUG("===== PVT KEY FILE = %s",aws_private_key_filename);
+	LE_DEBUG("===== PORT NUMBER = %d",aws_port_number);
+	LE_DEBUG("==============================================================");
+
 	Mutex = le_mutex_CreateNonRecursive("yieldMutex");
 	MutexSubscribe = le_mutex_CreateNonRecursive("subMutex");
 	_numSubcribes = 0;
@@ -666,12 +701,15 @@ COMPONENT_INIT {
 	/* Initialize remote MQTT Connection*/
 	/*============================================================*/
 	// Initialize connection parameters.
-	_initConnectionParams(NULL, -1);
+	_initConnectionParams(aws_host_name,aws_port_number);
 	// Initialize TLS default parameters. Skip this step if TLS encryption not required
-	_initTlsParams(NULL, NULL, NULL, NULL);
+	_initTlsParams(aws_cert_path,aws_root_CA_filename,aws_private_key_filename,aws_certificate_filename);
 	// Initialize connection to the MQTT broker
 	_initConnection();
 
+	//aws_Connect();
+
+	// Start unit test of AWS_IOT functions
 	IOT_TEST();
 }
 
