@@ -10,6 +10,7 @@
 
 // Define IPC API interface names.
 LE_SHARED const char* _AwsComponent_aws_ServiceInstanceName = "aws";
+LE_SHARED const char* _AwsComponent_config_ServiceInstanceName = "awsIot.AwsComponent.config";
 
 // Define default component's log session variables.
 LE_SHARED le_log_SessionRef_t awsIot_exe_LogSession;

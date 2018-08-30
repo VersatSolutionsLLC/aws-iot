@@ -15,7 +15,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "6dc58e014c6abb7311fba72ded2e76f4"
+#define PROTOCOL_ID_STR "9bf53e492919fe5352339555537be39f"
 
 #ifdef MK_TOOLS_BUILD
     extern const char** aws_ServiceInstanceNamePtr;
@@ -25,7 +25,7 @@
 #endif
 
 
-#define _MAX_MSG_SIZE 544
+#define _MAX_MSG_SIZE 2080
 
 // Define the message type for communicating between client and server
 typedef struct __attribute__((packed))

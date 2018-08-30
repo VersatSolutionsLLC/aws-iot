@@ -379,11 +379,11 @@ static void Handle_aws_Publish
     // Unpack which outputs are needed
 
     // Unpack the input parameters from the message
-    char topic[257];
+    char topic[1025];
     if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
                                topic,
                                sizeof(topic),
-                               256 ))
+                               1024 ))
     {
         goto error_unpack;
     }
@@ -399,11 +399,11 @@ static void Handle_aws_Publish
     {
         goto error_unpack;
     }
-    char payload[257];
+    char payload[1025];
     if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
                                payload,
                                sizeof(payload),
-                               256 ))
+                               1024 ))
     {
         goto error_unpack;
     }
@@ -656,7 +656,7 @@ static void AsyncResponse_aws_AddSubscribeEventHandler
     // Pack the input parameters
     
     LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
-                                  payload, 100 ));
+                                  payload, 1024 ));
 
     // Send the async response to the client
     TRACE("Sending message to client session %p : %ti bytes sent",

@@ -11,6 +11,7 @@
 extern "C" {
 #endif
 
+#include "config_interface.h"
 #include "aws_server.h"
 
 #ifdef __cplusplus

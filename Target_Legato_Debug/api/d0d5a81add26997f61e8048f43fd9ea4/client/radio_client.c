@@ -985,6 +985,76 @@ void radio_Disconnect
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ */
+//--------------------------------------------------------------------------------------------------
+bool radio_IsConnected
+(
+    void
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
+
+    bool _result;
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_radio_IsConnected;
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+
+    // Pack the input parameters
+
+    // Send a request to the server and get the response.
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack the result first
+    if (!le_pack_UnpackBool( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
+
+    // Unpack any "out" parameters
+
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+
+
+    return _result;
+
+error_unpack:
+    LE_FATAL("Unexpected response from server.");
+}
+
+
 static void ClientIndicationRecvHandler
 (
     le_msg_MessageRef_t  msgRef,

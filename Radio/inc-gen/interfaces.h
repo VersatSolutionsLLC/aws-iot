@@ -12,6 +12,8 @@ extern "C" {
 #endif
 
 #include "le_mrc_interface.h"
+#include "le_info_interface.h"
+#include "le_sim_interface.h"
 #include "le_temp_interface.h"
 #include "le_data_interface.h"
 #include "radio_server.h"

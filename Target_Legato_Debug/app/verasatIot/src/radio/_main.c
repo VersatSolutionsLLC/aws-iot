@@ -11,6 +11,8 @@
 // Define IPC API interface names.
 LE_SHARED const char* _Radio_radio_ServiceInstanceName = "radio.Radio.radio";
 LE_SHARED const char* _Radio_le_mrc_ServiceInstanceName = "radio.Radio.le_mrc";
+LE_SHARED const char* _Radio_le_info_ServiceInstanceName = "radio.Radio.le_info";
+LE_SHARED const char* _Radio_le_sim_ServiceInstanceName = "radio.Radio.le_sim";
 LE_SHARED const char* _Radio_le_temp_ServiceInstanceName = "radio.Radio.le_temp";
 LE_SHARED const char* _Radio_le_data_ServiceInstanceName = "radio.Radio.le_data";
 

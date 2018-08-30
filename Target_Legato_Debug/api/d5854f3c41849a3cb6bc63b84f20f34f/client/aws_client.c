@@ -644,13 +644,13 @@ int32_t aws_Publish
     int32_t _result;
 
     // Range check values, if appropriate
-    if ( strnlen(topic, 256) > 256 )
+    if ( strnlen(topic, 1024) > 1024 )
     {
-        LE_FATAL("strnlen(topic, 256) > 256");
+        LE_FATAL("strnlen(topic, 1024) > 1024");
     }
-    if ( strnlen(payload, 256) > 256 )
+    if ( strnlen(payload, 1024) > 1024 )
     {
-        LE_FATAL("strnlen(payload, 256) > 256");
+        LE_FATAL("strnlen(payload, 1024) > 1024");
     }
 
 
@@ -665,13 +665,13 @@ int32_t aws_Publish
 
     // Pack the input parameters
     LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
-                                  topic, 256 ));
+                                  topic, 1024 ));
     LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize,
                                                   topicLen ));
     LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize,
                                                   qosType ));
     LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
-                                  payload, 256 ));
+                                  payload, 1024 ));
     LE_ASSERT(le_pack_PackInt32( &_msgBufPtr, &_msgBufSize,
                                                   payloadLen ));
 
@@ -980,11 +980,11 @@ static void _Handle_aws_AddSubscribeEventHandler
     void* contextPtr = _clientDataPtr->contextPtr;
 
     // Unpack the remaining parameters
-    char payload[101];
+    char payload[1025];
     if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
                                payload,
                                sizeof(payload),
-                               100 ))
+                               1024 ))
     {
         goto error_unpack;
     }

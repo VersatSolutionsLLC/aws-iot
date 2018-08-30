@@ -12,6 +12,9 @@
 extern "C" {
 #endif
 
+extern const char* _AwsComponent_config_ServiceInstanceName;
+const char** config_ServiceInstanceNamePtr = &_AwsComponent_config_ServiceInstanceName;
+void config_ConnectService(void);
 extern const char* _AwsComponent_aws_ServiceInstanceName;
 const char** aws_ServiceInstanceNamePtr = &_AwsComponent_aws_ServiceInstanceName;
 void aws_AdvertiseService(void);
@@ -30,6 +33,9 @@ __attribute__((constructor)) void _AwsComponent_Init(void)
 
     // Advertise server-side IPC interfaces.
     aws_AdvertiseService();
+
+    // Connect client-side IPC interfaces.
+    config_ConnectService();
 
     // Register the component with the Log Daemon.
     AwsComponent_LogSession = log_RegComponent("AwsComponent", &AwsComponent_LogLevelFilterPtr);

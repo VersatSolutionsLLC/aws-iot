@@ -12,9 +12,15 @@
 extern "C" {
 #endif
 
+extern const char* _subscribe_radio_ServiceInstanceName;
+const char** radio_ServiceInstanceNamePtr = &_subscribe_radio_ServiceInstanceName;
+void radio_ConnectService(void);
 extern const char* _subscribe_aws_ServiceInstanceName;
 const char** aws_ServiceInstanceNamePtr = &_subscribe_aws_ServiceInstanceName;
 void aws_ConnectService(void);
+extern const char* _subscribe_config_ServiceInstanceName;
+const char** config_ServiceInstanceNamePtr = &_subscribe_config_ServiceInstanceName;
+void config_ConnectService(void);
 // Component log session variables.
 le_log_SessionRef_t subscribe_LogSession;
 le_log_Level_t* subscribe_LogLevelFilterPtr;
@@ -29,7 +35,9 @@ __attribute__((constructor)) void _subscribe_Init(void)
     LE_DEBUG("Initializing subscribe component library.");
 
     // Connect client-side IPC interfaces.
+    radio_ConnectService();
     aws_ConnectService();
+    config_ConnectService();
 
     // Register the component with the Log Daemon.
     subscribe_LogSession = log_RegComponent("subscribe", &subscribe_LogLevelFilterPtr);

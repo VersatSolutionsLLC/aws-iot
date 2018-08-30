@@ -673,6 +673,51 @@ static void Handle_radio_Disconnect
 }
 
 
+static void Handle_radio_IsConnected
+(
+    le_msg_MessageRef_t _msgRef
+
+)
+{
+    // Get the message buffer pointer
+    __attribute__((unused)) uint8_t* _msgBufPtr =
+        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
+
+    // Needed if we are returning a result or output values
+    uint8_t* _msgBufStartPtr = _msgBufPtr;
+
+    // Unpack which outputs are needed
+
+    // Unpack the input parameters from the message
+
+    // Define storage for output parameters
+
+    // Call the function
+    bool _result;
+    _result  = radio_IsConnected (  );
+
+    // Re-use the message buffer for the response
+    _msgBufPtr = _msgBufStartPtr;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack the result first
+    LE_ASSERT(le_pack_PackBool( &_msgBufPtr, &_msgBufSize, _result ));
+
+    // Pack any "out" parameters
+
+    // Return the response
+    TRACE("Sending response to client session %p : %ti bytes sent",
+          le_msg_GetSession(_msgRef),
+          _msgBufPtr-_msgBufStartPtr);
+
+
+    le_msg_Respond(_msgRef);
+
+    return;
+}
+
+
 static void ServerMsgRecvHandler
 (
     le_msg_MessageRef_t msgRef,
@@ -695,6 +740,7 @@ static void ServerMsgRecvHandler
         case _MSGID_radio_Info : Handle_radio_Info(msgRef); break;
         case _MSGID_radio_Connect : Handle_radio_Connect(msgRef); break;
         case _MSGID_radio_Disconnect : Handle_radio_Disconnect(msgRef); break;
+        case _MSGID_radio_IsConnected : Handle_radio_IsConnected(msgRef); break;
 
         default: LE_ERROR("Unknowm msg id = %i", msgPtr->id);
     }

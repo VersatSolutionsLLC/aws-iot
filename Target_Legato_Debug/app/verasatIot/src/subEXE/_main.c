@@ -9,7 +9,9 @@
 
 
 // Define IPC API interface names.
+LE_SHARED const char* _subscribe_radio_ServiceInstanceName = "subEXE.subscribe.radio";
 LE_SHARED const char* _subscribe_aws_ServiceInstanceName = "subEXE.subscribe.aws";
+LE_SHARED const char* _subscribe_config_ServiceInstanceName = "subEXE.subscribe.config";
 
 // Define default component's log session variables.
 LE_SHARED le_log_SessionRef_t subEXE_exe_LogSession;

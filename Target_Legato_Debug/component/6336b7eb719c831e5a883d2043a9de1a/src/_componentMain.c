@@ -15,6 +15,12 @@ extern "C" {
 extern const char* _Radio_le_mrc_ServiceInstanceName;
 const char** le_mrc_ServiceInstanceNamePtr = &_Radio_le_mrc_ServiceInstanceName;
 void le_mrc_ConnectService(void);
+extern const char* _Radio_le_info_ServiceInstanceName;
+const char** le_info_ServiceInstanceNamePtr = &_Radio_le_info_ServiceInstanceName;
+void le_info_ConnectService(void);
+extern const char* _Radio_le_sim_ServiceInstanceName;
+const char** le_sim_ServiceInstanceNamePtr = &_Radio_le_sim_ServiceInstanceName;
+void le_sim_ConnectService(void);
 extern const char* _Radio_le_temp_ServiceInstanceName;
 const char** le_temp_ServiceInstanceNamePtr = &_Radio_le_temp_ServiceInstanceName;
 void le_temp_ConnectService(void);
@@ -42,6 +48,8 @@ __attribute__((constructor)) void _Radio_Init(void)
 
     // Connect client-side IPC interfaces.
     le_mrc_ConnectService();
+    le_info_ConnectService();
+    le_sim_ConnectService();
     le_temp_ConnectService();
     le_data_ConnectService();
 

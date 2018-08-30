@@ -12,6 +12,8 @@ extern "C" {
 #endif
 
 #include "api/66dee3ecaa2d84623bc078c25538182c/client/le_mrc_interface.h"
+#include "api/64902d910713c461d507a57f6f8b6399/client/le_info_interface.h"
+#include "api/4768f86e14f152c0fdb9ac65c04be038/client/le_sim_interface.h"
 #include "api/74da19e8ce360a0664696b8a08ca3433/client/le_temp_interface.h"
 #include "api/f970c0d0e5995056740616162db61084/client/le_data_interface.h"
 #include "api/d0d5a81add26997f61e8048f43fd9ea4/server/radio_server.h"
