@@ -4,7 +4,7 @@ sources:
 }
 cflags:
 {
-	-I $CURDIR/../ReadConfig/
+	-I $CURDIR/../ConfigManager/
 }
 requires:
 {
@@ -12,6 +12,6 @@ requires:
     {
     	Radio/radio.api
         AwsComponent/aws.api
-        ReadConfig/config.api
+        ConfigManager/config.api
     }
 }

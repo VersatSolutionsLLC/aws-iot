@@ -7,13 +7,14 @@
 #include <string.h>
 #include <limits.h>
 
+#include "../ConfigManager/config.h"
 #include "aws_iot_config.h"
 #include "aws_iot_log.h"
 #include "aws_iot_version.h"
 #include "aws_iot_mqtt_client_interface.h"
 #include "aws_iot_shadow_interface.h"
 #include "test_AwsIot.h"
-#include "configDefinition.h"
+#include "aws_iot_config_defn.h"
 
 #define MAX_SIZE 100
 #define PAYLOAD_SIZE 500
@@ -58,60 +59,29 @@ ConnectionParams connectionParams;
  * Initialize TLS connection parameters. If called with empty parameters, it uses the values defined in the
  * configure file.
  */
-void _initTlsParams(const char* certPath, const char* rootCa,
-		const char* privateKey, const char* cert) {
-
-	if (strlen(certPath) < 0 || certPath == NULL) {
-
-		LE_DEBUG("Certificate path is not supplied. Using default ('%s')",
-				AWS_IOT_CERT_PATH);
-		snprintf(tlsParams.certDirectory, PATH_MAX + 1, "%s",
-		AWS_IOT_CERT_PATH);
-	} else {
-		snprintf(tlsParams.certDirectory, PATH_MAX + 1, "%s",
-				certPath);
-	}
+void _initTlsParams(const char* rootCa, const char* privateKey,
+		const char* cert) {
 
 	// Root CA certificate name update
 	if (strlen(rootCa) < 0 || rootCa == NULL) {
-		LE_DEBUG(
-				"Root CA certificate name is not supplied. Using default ('%s')",
-				AWS_IOT_ROOT_CA_FILENAME);
-		snprintf(tlsParams.rootCA, PATH_MAX + 1, "%s/%s",
-				tlsParams.certDirectory, AWS_IOT_ROOT_CA_FILENAME);
-
+		LE_FATAL("Root CA certificate name is not supplied");
 	} else {
-		snprintf(tlsParams.rootCA, PATH_MAX + 1, "%s/%s",
-						tlsParams.certDirectory, rootCa);
+		strcpy(tlsParams.rootCA, rootCa);
 	}
 
 	// AWS_IOT certificate file name update
 	if (strlen(cert) < 0 || cert == NULL) {
-		LE_DEBUG(
-				"AWS_IOT Client certificate file name is not supplied. Using default ('%s')",
-				AWS_IOT_CERTIFICATE_FILENAME);
-		snprintf(tlsParams.clientCrt, PATH_MAX + 1, "%s/%s",
-				tlsParams.certDirectory,
-				AWS_IOT_CERTIFICATE_FILENAME);
-
+		LE_FATAL("AWS_IOT Client certificate file name is not supplied");
 	} else {
-		snprintf(tlsParams.clientCrt, PATH_MAX + 1, "%s/%s",
-						tlsParams.certDirectory,
-						cert);
+		strcpy(tlsParams.clientCrt, cert);
 	}
 
 	// AWS_IOT Pvt Key file name update
 	if (strlen(privateKey) < 0 || privateKey == NULL) {
-		LE_DEBUG(
-				"AWS_IOT pvt key file name is not supplied. Using default ('%s')",
-				AWS_IOT_PRIVATE_KEY_FILENAME);
-		snprintf(tlsParams.clientKey, PATH_MAX + 1, "%s/%s",
-				tlsParams.certDirectory, AWS_IOT_PRIVATE_KEY_FILENAME);
+		LE_FATAL("AWS_IOT pvt key file name is not supplied");
 
 	} else {
-		snprintf(tlsParams.clientKey, PATH_MAX + 1, "%s/%s",
-						tlsParams.certDirectory, privateKey);
-
+		strcpy(tlsParams.clientKey, privateKey);
 	}
 
 }
@@ -413,7 +383,7 @@ int aws_Connect() {
 	if (rc != SUCCESS) {
 		UNLOCK();
 		state = _getConnectionState();
-		LE_DEBUG(
+		LE_ERROR(
 				"Failed to connect to MQTT host.. Network error(%d) and connection error(%d) is identified",
 				rc, state);
 		return rc;
@@ -645,8 +615,7 @@ aws_SubscribeEventHandlerRef_t aws_AddSubscribeEventHandler(
 	if (handlerRef != NULL) {
 		LE_DEBUG("Successfully added subscribe layered handler.");
 		le_event_SetContextPtr(handlerRef, contextPtr);
-	}
-	else{
+	} else {
 		LE_ERROR("Failed to add subscribe handler!");
 	}
 	return (aws_SubscribeEventHandlerRef_t) (handlerRef);
@@ -667,47 +636,79 @@ void aws_RemoveSubscribeEventHandler(aws_SubscribeEventHandlerRef_t handlerRef) 
 COMPONENT_INIT {
 
 	char aws_host_name[MAX_SIZE];
-	char aws_cert_path[MAX_SIZE];
 	char aws_client_id[MAX_SIZE];
 	char aws_thing_name[MAX_SIZE];
 	char aws_root_CA_filename[MAX_SIZE];
 	char aws_certificate_filename[MAX_SIZE];
 	char aws_private_key_filename[MAX_SIZE];
 	int aws_port_number = 0;
+	int isMandatoryConfigMissing = 0;
 
-	config_sGetValue (AWSIOT_SECTION,KEY_HOST_NAME,"NULL",aws_host_name,100);
-	config_sGetValue (AWSIOT_SECTION,KEY_CERT_PATH,"NULL",aws_cert_path,100);
-	config_sGetValue (AWSIOT_SECTION,KEY_CLIENT_ID,"NULL",aws_client_id,100);
-	config_sGetValue (AWSIOT_SECTION,KEY_THING_NAME,"NULL",aws_thing_name,100);
-	config_sGetValue (AWSIOT_SECTION,KEY_ROOT_CA_FILE_NAME,"NULL",aws_root_CA_filename,100);
-	config_sGetValue (AWSIOT_SECTION,KEY_CERTIFICATE_FILE_NAME,"NULL",aws_certificate_filename,100);
-	config_sGetValue (AWSIOT_SECTION,KEY_PRIVATE_KEY_FILE_NAME,"NULL",aws_private_key_filename,100);
-	config_iGetValue (AWSIOT_SECTION,KEY_PORT_NUMBER,-1,&aws_port_number);
+	if ( 0 == config_GetString(CONFIG_SECTION, CONFIG_KEY_HOST_NAME, "", aws_host_name,
+	MAX_SIZE) ) {
+		LE_ERROR("Missing mandatory configuration [%s]%s in '%s'", CONFIG_KEY_HOST_NAME, CONFIG_SECTION, CONFIG_FILE_NAME);
+		isMandatoryConfigMissing = 1;
+	}
+	if (0 ==  config_GetString(CONFIG_SECTION, CONFIG_KEY_CLIENT_ID, "",
+			aws_client_id,
+			MAX_SIZE)) {
+		LE_ERROR("Missing mandatory configuration [%s]%s in '%s'", CONFIG_KEY_CLIENT_ID, CONFIG_SECTION, CONFIG_FILE_NAME);
+		isMandatoryConfigMissing = 1;
+	}
+	if ( 0 == config_GetString(CONFIG_SECTION, CONFIG_KEY_THING_NAME, "",
+			aws_thing_name,
+			MAX_SIZE) ) {
+		LE_ERROR("Missing mandatory configuration [%s]%s in '%s'", CONFIG_KEY_THING_NAME, CONFIG_SECTION, CONFIG_FILE_NAME);
+		isMandatoryConfigMissing = 1;
+	}
+	if ( 0 == config_GetString(CONFIG_SECTION, CONFIG_KEY_ROOT_CA_FILE_NAME, "",
+			aws_root_CA_filename, MAX_SIZE) ) {
+		LE_ERROR("Missing mandatory configuration [%s]%s in '%s'", CONFIG_KEY_ROOT_CA_FILE_NAME, CONFIG_SECTION, CONFIG_FILE_NAME);
+		isMandatoryConfigMissing = 1;
+	}
+	if ( 0 == config_GetString(CONFIG_SECTION, CONFIG_KEY_CERTIFICATE_FILE_NAME, "",
+			aws_certificate_filename, MAX_SIZE) ) {
+		LE_ERROR("Missing mandatory configuration [%s]%s in '%s'", CONFIG_KEY_CERTIFICATE_FILE_NAME, CONFIG_SECTION, CONFIG_FILE_NAME);
+		isMandatoryConfigMissing = 1;
+	}
+	if ( 0 == config_GetString(CONFIG_SECTION, CONFIG_KEY_PRIVATE_KEY_FILE_NAME, "",
+			aws_private_key_filename, MAX_SIZE) ) {
+		LE_ERROR("Missing mandatory configuration [%s]%s in '%s'", CONFIG_KEY_PRIVATE_KEY_FILE_NAME, CONFIG_SECTION, CONFIG_FILE_NAME);
+		isMandatoryConfigMissing = 1;
+	}
 
-	LE_DEBUG("==================Test Parameters for AWS_IOT=================");
-	LE_DEBUG("===== HOST NAME = %s",aws_host_name);
-	LE_DEBUG("===== CERT PATH = %s",aws_cert_path);
-	LE_DEBUG("===== CLIENT ID = %s",aws_client_id);
-	LE_DEBUG("===== THING NAME = %s",aws_thing_name);
-	LE_DEBUG("===== CERT FILE = %s",aws_certificate_filename);
-	LE_DEBUG("===== PVT KEY FILE = %s",aws_private_key_filename);
-	LE_DEBUG("===== PORT NUMBER = %d",aws_port_number);
+	if ( 0 == config_GetInteger(CONFIG_SECTION, CONFIG_KEY_PORT_NUMBER, CONFIG_DEFAULT_PORT_NUMBER, &aws_port_number)) {
+		// default to 443
+		LE_DEBUG("Using default value %d for '%s' key",CONFIG_DEFAULT_PORT_NUMBER,CONFIG_KEY_PORT_NUMBER);
+	}
+
+	if ( isMandatoryConfigMissing ) {
+		LE_FATAL("Failed to load configuration for AWS_IOT");
+	}
+
+	LE_DEBUG("================== AWS_IOT PARAMS =================");
+	LE_DEBUG(" HOST NAME = %s", aws_host_name);
+	LE_DEBUG(" CLIENT ID = %s", aws_client_id);
+	LE_DEBUG(" THING NAME = %s", aws_thing_name);
+	LE_DEBUG(" CERT FILE = %s", aws_certificate_filename);
+	LE_DEBUG(" PVT KEY FILE = %s", aws_private_key_filename);
+	LE_DEBUG(" PORT NUMBER = %d", aws_port_number);
 	LE_DEBUG("==============================================================");
 
 	Mutex = le_mutex_CreateNonRecursive("yieldMutex");
 	MutexSubscribe = le_mutex_CreateNonRecursive("subMutex");
 	_numSubcribes = 0;
+
 	/*============================================================*/
 	/* Initialize remote MQTT Connection*/
 	/*============================================================*/
 	// Initialize connection parameters.
-	_initConnectionParams(aws_host_name,aws_port_number);
+	_initConnectionParams(aws_host_name, aws_port_number);
 	// Initialize TLS default parameters. Skip this step if TLS encryption not required
-	_initTlsParams(aws_cert_path,aws_root_CA_filename,aws_private_key_filename,aws_certificate_filename);
+	_initTlsParams(aws_root_CA_filename, aws_private_key_filename,
+			aws_certificate_filename);
 	// Initialize connection to the MQTT broker
 	_initConnection();
-
-	//aws_Connect();
 
 	// Start unit test of AWS_IOT functions
 	IOT_TEST();

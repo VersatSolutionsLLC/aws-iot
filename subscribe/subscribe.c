@@ -1,10 +1,14 @@
 #include "legato.h"
-#include "configDefinition.h"
+
+#include "../ConfigManager/config.h"
 #include "interfaces.h"
 
-# define TEST_SECTION	"test_param_for_agent_1"
-# define KEY_TOPIC_NAME "TopicName"
+# define TEST_SECTION	"agent_1"
+# define KEY_TOPIC_NAME "Topic"
 # define KEY_QOS		"QOS"
+# define DEFAULT_TOPIC_NAME ""
+# define DEFAULT_QOS_VALUE 1
+
 void MyHandlerFunc(char *ptrPayload, void *reportPayloadPtr) {
 	LE_INFO("\n========== (subscribe_component) PAYLOAD DATA =============\n");
 	LE_INFO("\n\t\t %s", ptrPayload);
@@ -17,9 +21,12 @@ void _subscribe() {
 
 	char sTopic[50];
 	int nQos = 0;
-	config_sGetValue(TEST_SECTION, KEY_TOPIC_NAME, "NULL", sTopic, 50);
+
+	config_GetString(TEST_SECTION, KEY_TOPIC_NAME,DEFAULT_TOPIC_NAME, sTopic, 50);
+	config_GetInteger(TEST_SECTION, KEY_QOS,DEFAULT_QOS_VALUE, &nQos);
+
 	int nTopicLen = strlen(sTopic);
-	config_iGetValue(TEST_SECTION, KEY_QOS, 1, &nQos);
+
 	retCode = aws_Subscribe(sTopic, nTopicLen, nQos);
 	LE_ASSERT(0 == retCode);
 

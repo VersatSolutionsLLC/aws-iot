@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project>
+	<configuration id="legato.core.af.projectType.exe.release.820031328" name="Target_Legato_Release">
+		<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
+			<provider copy-of="extension" id="org.eclipse.cdt.ui.UserLanguageSettingsProvider"/>
+			<provider-reference id="org.eclipse.cdt.core.ReferencedProjectsLanguageSettingsProvider" ref="shared-provider"/>
+			<provider-reference id="org.eclipse.cdt.managedbuilder.core.MBSLanguageSettingsProvider" ref="shared-provider"/>
+			<provider-reference id="com.swi.ebs.legato.core.provider.LegatoFrameworkProvider" ref="shared-provider"/>
+			<provider class="com.swi.ebs.legato.core.toolchain.LegatoGCCBuiltinSpecsDetector" console="false" env-hash="1894675602213416837" id="com.swi.ebs.legato.core.provider.GCCBuiltinSpecsDetector" keep-relative-paths="false" name="Legato Linux GCC Built-in Compiler Settings" parameter="${LegatoLinuxToolchainBinPath}/${LegatoLinuxToolchainPrefix}${COMMAND} ${LegatoLinuxToolchainSysrootArg} -E -P -v -dD &quot;${INPUTS}&quot;" prefer-non-shared="true">
+				<language-scope id="org.eclipse.cdt.core.gcc"/>
+				<language-scope id="org.eclipse.cdt.core.g++"/>
+			</provider>
+			<provider-reference id="com.swi.ebs.legato.core.provider.GCCDockerSpecsDetector" ref="shared-provider"/>
+		</extension>
+	</configuration>
+	<configuration id="legato.core.af.projectType.exe.debug.206505584" name="Target_Legato_Debug">
+		<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
+			<provider copy-of="extension" id="org.eclipse.cdt.ui.UserLanguageSettingsProvider"/>
+			<provider-reference id="org.eclipse.cdt.core.ReferencedProjectsLanguageSettingsProvider" ref="shared-provider"/>
+			<provider-reference id="org.eclipse.cdt.managedbuilder.core.MBSLanguageSettingsProvider" ref="shared-provider"/>
+			<provider-reference id="com.swi.ebs.legato.core.provider.LegatoFrameworkProvider" ref="shared-provider"/>
+			<provider class="com.swi.ebs.legato.core.toolchain.LegatoGCCBuiltinSpecsDetector" console="false" env-hash="1894675602213416837" id="com.swi.ebs.legato.core.provider.GCCBuiltinSpecsDetector" keep-relative-paths="false" name="Legato Linux GCC Built-in Compiler Settings" parameter="${LegatoLinuxToolchainBinPath}/${LegatoLinuxToolchainPrefix}${COMMAND} ${LegatoLinuxToolchainSysrootArg} -E -P -v -dD &quot;${INPUTS}&quot;" prefer-non-shared="true">
+				<language-scope id="org.eclipse.cdt.core.gcc"/>
+				<language-scope id="org.eclipse.cdt.core.g++"/>
+			</provider>
+			<provider-reference id="com.swi.ebs.legato.core.provider.GCCDockerSpecsDetector" ref="shared-provider"/>
+		</extension>
+	</configuration>
+</project>

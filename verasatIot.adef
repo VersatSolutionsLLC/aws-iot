@@ -1,6 +1,6 @@
 executables:
 {
-	readConfig = ( ReadConfig )
+	configManager = ( ConfigManager )
 	awsIot = (  AwsComponent)
 	radio = ( Radio )
 	publish = (PublishRadio)
@@ -31,7 +31,6 @@ requires:
         	/etc/aws/config.ini /usr/tests/config.ini
         	
     }
-
 }
 
 processes:
@@ -43,19 +42,21 @@ processes:
 
 	run:
 	{
-		( readConfig )
+		( configManager )
 		( awsIot )
 		( radio )
 		( publish )
 		( gps )
 		( subEXE )
 	}
+
 	maxCoreDumpFileBytes: 512K
 	maxFileBytes: 512K
 }
+
 bindings:
 {
-    publish.PublishRadio.radio -> radio.Radio.radio
+	publish.PublishRadio.radio -> radio.Radio.radio
     publish.PublishRadio.aws -> awsIot.AwsComponent.aws
     radio.Radio.le_mrc -> modemService.le_mrc
     radio.Radio.le_info -> modemService.le_info
@@ -66,14 +67,16 @@ bindings:
     publish.PublishRadio.gps -> gps.Gps.gps
 	subEXE.subscribe.aws -> awsIot.AwsComponent.aws
 	subEXE.subscribe.radio -> radio.Radio.radio
-	subEXE.subscribe.config -> readConfig.ReadConfig.config
-  	awsIot.AwsComponent.config -> readConfig.ReadConfig.config
+	subEXE.subscribe.config -> configManager.ConfigManager.config
+  	awsIot.AwsComponent.config -> configManager.ConfigManager.config
 }
+
 extern:
 {
-    aws = awsIot.AwsComponent.aws
-    config = readConfig.ReadConfig.config
+	aws = awsIot.AwsComponent.aws
+    config = configManager.ConfigManager.config
 }
+
 version: 1.0.0
 maxFileSystemBytes: 512K
 sandboxed: true

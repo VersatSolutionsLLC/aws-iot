@@ -6,7 +6,7 @@ cflags:
 		-I $CURDIR/../AwsComponent/common
 		-I $CURDIR/../AwsComponent/jsmn
 		-I $CURDIR/../AwsComponent/include
-		-I $CURDIR/../ReadConfig/
+		-I $CURDIR/../ConfigManager/
 		
  		//-DENABLE_IOT_TEST
 }
@@ -22,7 +22,7 @@ requires:
 {
 	api:
 	{
-		ReadConfig/config.api
+		ConfigManager/config.api
 	}
 }
 
