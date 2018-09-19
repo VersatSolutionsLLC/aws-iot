@@ -1,0 +1,42 @@
+FUNCTION int32 GetString
+(
+	string section[100] IN,
+	string key[100] IN,
+	string defaultValue[100] IN,
+	
+	string keyValue[1024] OUT
+);
+FUNCTION int32 GetInteger
+(
+	string section[100] IN,
+	string key[100] IN,
+	int32 defaultValue IN,
+	
+	int32 keyValue OUT
+);
+FUNCTION int32 GetFloat
+(
+	string section[100] IN,
+	string key[100] IN,
+	double defaultValue IN,
+	
+	double keyValue OUT
+);
+FUNCTION int32 GetBoolean
+(
+	string section[100] IN,
+	string key[100] IN,
+	bool defaultValue IN,
+	
+	bool keyValue OUT
+);
+FUNCTION int32 PutString
+(
+	string section[100] IN,
+	string key[50] IN,
+	string keyValue[50] IN
+);
+FUNCTION int32 OpenFile 
+(
+	
+);

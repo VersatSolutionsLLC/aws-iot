@@ -1,0 +1,28 @@
+executables:
+{
+	configuration = ( Configuration )
+}
+
+
+processes:
+{
+	envVars:
+	{
+		LE_LOG_LEVEL = 	DEBUG
+	}
+
+	run:
+	{
+		( configuration	)
+	}
+	maxCoreDumpFileBytes: 512K
+	maxFileBytes: 512K
+}
+
+extern:
+{
+    config = configuration.Configuration.config
+}
+version: 1.0.0
+maxFileSystemBytes: 512K
+sandboxed:false

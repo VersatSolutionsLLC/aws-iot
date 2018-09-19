@@ -1,0 +1,13 @@
+sources:
+{
+	config.c
+	minIni.c
+}
+
+provides:
+{
+	api:
+	{
+		config = Configuration/config.api
+	}
+}

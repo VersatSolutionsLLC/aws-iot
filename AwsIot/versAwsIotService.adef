@@ -1,0 +1,49 @@
+executables:
+{
+	awsIot = ( AwsComponent )
+}
+
+requires:
+{
+	file:
+    {
+
+	        // needed for networking:
+	        /lib/libnss_compat.so.2 /lib/
+	        /lib/libnss_files.so.2 /lib/
+	        /lib/libnss_dns.so.2 /lib/
+	        /lib/libresolv.so.2 /lib/
+	        /etc/nsswitch.conf /etc/
+	        /etc/hosts /etc/
+	        /etc/resolv.conf /etc/
+	        // Certificates to initialize AWS_IOT 
+    }
+
+}
+
+processes:
+{
+	envVars:
+	{
+		LE_LOG_LEVEL = 	DEBUG
+	}
+
+	run:
+	{
+		( awsIot )
+	}
+	maxCoreDumpFileBytes: 512K
+	maxFileBytes: 512K
+}
+bindings:
+{
+  	awsIot.AwsComponent.config -> versConfigService.config
+  	awsIot.AwsComponent.le_data -> dataConnectionService.le_data
+}
+extern:
+{
+    aws = awsIot.AwsComponent.aws
+}
+version: 1.0.0
+maxFileSystemBytes: 512K
+sandboxed: false

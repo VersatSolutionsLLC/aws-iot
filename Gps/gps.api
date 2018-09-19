@@ -1,1 +1,0 @@
-FUNCTION GetLocation(string location[1024] OUT);

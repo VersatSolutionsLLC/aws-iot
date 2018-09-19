@@ -1,0 +1,17 @@
++ */
++ *.h
++ *.c
++ *.java
++ *.so
++ *.jar
++ *.update
++ *.zip
++ *.app
++ *.comp
++ app/*/*.app
++ app/*/staging/read-only/bin/*
++ cwe/legatoz.cwe
++ cwe/legato.cwe
+- *
+P Makefile
+P .rsync-rules

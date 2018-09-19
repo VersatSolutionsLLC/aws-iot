@@ -1,0 +1,30 @@
+FUNCTION int32 Publish
+(
+	string topic[1024] IN,
+	int32 topicLen IN,
+	int32 qosType IN,
+	string payload[1024] IN,
+	int32 payloadLen IN
+	
+);
+FUNCTION int32 Subscribe
+(
+	string topic[256] IN,
+	int32 topicLen IN,
+	int32 qosType IN
+);
+FUNCTION int32 UnSubscribe
+(
+	string topic[256] IN,
+	int32 topicLen IN
+);
+HANDLER SubscribeEventHandler
+(
+    string payload[1024] IN                        
+);
+EVENT SubscribeEvent
+(
+    SubscribeEventHandler handler
+);
+FUNCTION Hibernate();
+FUNCTION bool IsInHibernation();
