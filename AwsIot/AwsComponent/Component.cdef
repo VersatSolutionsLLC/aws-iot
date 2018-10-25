@@ -8,7 +8,7 @@ cflags:
 		-I $CURDIR/../AwsComponent/include
 		-I $CURDIR/../ConfigManager/
 		
-// 		-DENABLE_IOT_TEST
+ 		//-DENABLE_IOT_TEST
  		-DENABLE_IOT_DEBUG
 }
 

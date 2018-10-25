@@ -1,0 +1,168 @@
+# Build script for application 'versConfigService'
+
+# == Auto-generated file.  Do not edit. ==
+
+builddir =Target_Legato_Debug
+
+cFlags = -g -I Target_Legato_Debug -I/legato/interfaces -I/legato/framework/include -I/ds/versConfigService
+
+cxxFlags = -g -I Target_Legato_Debug -I/legato/interfaces -I/legato/framework/include -I/ds/versConfigService
+
+ldFlags = -g
+
+target = ar7
+
+ifgenFlags =  --import-dir /legato/interfaces --import-dir /legato/framework/include --import-dir /ds/versConfigService
+
+rule CompileC
+  description = Compiling C source
+  depfile = $out.d
+  command = gcc --sysroot=/ -MMD -MF $out.d -c $in -o $out -DLE_FILENAME=`basename $in` -Wall -fPIC -Werror -fvisibility=hidden -DMK_TOOLS_BUILD  -DLEGATO_EMBEDDED $cFlags
+
+rule CompileCxx
+  description = Compiling C++ source
+  depfile = $out.d
+  command = g++ --sysroot=/ -MMD -MF $out.d -c $in -o $out -DLE_FILENAME=`basename $in` -Wall -fPIC -Werror -fvisibility=hidden  -DMK_TOOLS_BUILD  -DLEGATO_EMBEDDED $cxxFlags
+
+rule LinkCLib
+  description = Linking C library
+  command = gcc --sysroot=/ -shared -o $out $in $ldFlags
+
+rule LinkCxxLib
+  description = Linking C++ library
+  command = g++ --sysroot=/ -shared -o $out $in $ldFlags
+
+rule LinkCExe
+  description = Linking C executable
+  command = gcc --sysroot=/ -fPIE -pie -o $out $in $ldFlags
+
+rule LinkCxxExe
+  description = Linking C++ executable
+  command = g++ --sysroot=/ -fPIE -pie -o $out $in $ldFlags
+
+rule CompileJava
+  description = Compiling Java source
+  command = javac -cp $classPath -d `dirname $out` $in && touch $out
+
+rule MakeJar
+  description = Making JAR file
+  command = INDIR=`dirname $in`; find $$INDIR -name '*.class' -printf "-C $$INDIR\n%P\n"|xargs jar -cf $out
+
+rule MakeKernelModule
+  description = Build kernel driver module
+  depfile = $out.d
+  command = make -C $in
+
+rule BuildExternal
+  description = Running external build step
+  command = cd $builddir/$workingdir && $
+            export CFLAGS="--sysroot=/ $cFlags" $
+            CXXFLAGS="--sysroot=/ $cxxFlags" $
+            LDFLAGS="--sysroot=/ $ldFlags" $
+            $externalCommand
+
+rule GenInterfaceCode
+  description = Generating IPC interface code
+  command = ifgen --output-dir $outputDir $ifgenFlags $in
+
+rule GenPyApiCExtension
+  description = Generating Python API C Extension
+  command = cextgenerator.py $in -o $workDir > /dev/null
+rule CopyFile
+  description = Copying file
+  command = cp -d -f -T $in $out
+
+rule RegenNinjaScript
+  description = Regenerating build script
+  generator = 1
+  command = mkapp --dont-run-ninja "-t" "ar7" "-o" "Target_Legato_Debug" "-w" "Target_Legato_Debug" "-C" "-g" "-X" "-g" "-L" "-g" "versConfigService.adef"
+
+rule BundleFile
+  description = Bundling file
+  command = legato-install -m $modeFlags $in $out
+
+rule MakeAppInfoProperties
+  description = Creating info.properties
+  command = rm -f $out && $
+            md5=$$( ( cd $workingDir/staging && $
+                      find -P -print0 |LC_ALL=C sort -z && $
+                      find -P -type f -print0 |LC_ALL=C sort -z |xargs -0 md5sum && $
+                      find -P -type l -print0 |LC_ALL=C sort -z |xargs -0 -r -n 1 readlink $
+                    ) | md5sum) && $
+            md5=$${md5%% *} && $
+            ( echo "app.name=$name" && $
+              echo "app.md5=$$md5" && $
+              echo "app.version=$version" && $
+              echo "legato.version=`cat $$LEGATO_ROOT/version`" $
+            ) > $out
+
+rule PackApp
+  description = Packaging app
+  command = $
+            mtime=`stat -c %Y $adefPath` && $
+            find $workingDir/staging -exec touch --no-dereference --date=@$$mtime {} \; && $
+            (cd $workingDir/staging && find . -print0 | LC_ALL=C sort -z |tar --no-recursion --null -T - -cjf - ) > $workingDir/$name.$target && $
+            tarballSize=`stat -c '%s' $workingDir/$name.$target` && $
+            md5=`grep '^app.md5=' $in | sed 's/^app.md5=//'` && $
+            ( printf '{\n' && $
+              printf '"command":"updateApp",\n' && $
+              printf '"name":"$name",\n' && $
+              printf '"version":"$version",\n' && $
+              printf '"md5":"%s",\n' "$$md5" && $
+              printf '"size":%s\n' "$$tarballSize" && $
+              printf '}' && $
+              cat $workingDir/$name.$target $
+            ) > $out
+
+rule BinPackApp
+  description = Packaging app for distribution.
+  command = cp -r $stagingDir/* $workingDir/ && $
+            rm $workingDir/info.properties $workingDir/root.cfg && $
+            mtime=`stat -c %Y $adefPath` && $
+            find $workingDir -exec touch  --no-dereference --date=@$$mtime {} \; && $
+            (cd $workingDir/ && find . -print0 |LC_ALL=C sort -z  |tar --no-recursion --null -T - -cjf - ) > $out
+
+build $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_server.o: CompileC $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_server.c | $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_messages.h $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_server.h
+  cFlags = $cFlags
+
+build $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_server.c $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_server.h $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_messages.h: GenInterfaceCode /ds/versConfigService/Configuration/config.api |
+  ifgenFlags = --gen-server --gen-server-interface --gen-local --name-prefix config $ifgenFlags
+  outputDir = $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server
+
+build Target_Legato_Debug/staging/read-only/lib/libComponent_Configuration.so: LinkCLib $builddir/component/4d10e81788534f07af1ffd9b79620c33/obj/3c1dad9ce649d16774ea1214d234fc1d.o $builddir/component/4d10e81788534f07af1ffd9b79620c33/obj/a1370af6619c9556e5490a723489e839.o $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_server.o $builddir/component/4d10e81788534f07af1ffd9b79620c33/obj/_componentMain.c.o | /legato/build/ar7/framework/lib/liblegato.so
+  ldFlags =  -g -LTarget_Legato_Debug/staging/read-only/lib -Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" "-L$$LEGATO_BUILD/framework/lib" -llegato -lpthread -lrt -lm
+
+build $builddir/component/4d10e81788534f07af1ffd9b79620c33/obj/3c1dad9ce649d16774ea1214d234fc1d.o: CompileC /ds/versConfigService/Configuration/config.c || $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_server.h $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_messages.h 
+  cFlags = $cFlags -I$builddir/component/4d10e81788534f07af1ffd9b79620c33/src -I$builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server -DLE_COMPONENT_NAME=Configuration -DLE_LOG_SESSION=Configuration_LogSession  -DLE_LOG_LEVEL_FILTER_PTR=Configuration_LogLevelFilterPtr  "-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED void _Configuration_COMPONENT_INIT()"
+
+build $builddir/component/4d10e81788534f07af1ffd9b79620c33/obj/a1370af6619c9556e5490a723489e839.o: CompileC /ds/versConfigService/Configuration/minIni.c || $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_server.h $builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server/config_messages.h 
+  cFlags = $cFlags -I$builddir/component/4d10e81788534f07af1ffd9b79620c33/src -I$builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server -DLE_COMPONENT_NAME=Configuration -DLE_LOG_SESSION=Configuration_LogSession  -DLE_LOG_LEVEL_FILTER_PTR=Configuration_LogLevelFilterPtr  "-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED void _Configuration_COMPONENT_INIT()"
+
+build $builddir/component/4d10e81788534f07af1ffd9b79620c33/obj/_componentMain.c.o: CompileC $builddir/component/4d10e81788534f07af1ffd9b79620c33/src/_componentMain.c
+  cFlags = $cFlags -I$builddir/component/4d10e81788534f07af1ffd9b79620c33/src -I$builddir/api/539d0ea7fcbe9ce053a4f45301b6a091/server -DLE_COMPONENT_NAME=Configuration -DLE_LOG_SESSION=Configuration_LogSession  -DLE_LOG_LEVEL_FILTER_PTR=Configuration_LogLevelFilterPtr  "-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED void _Configuration_COMPONENT_INIT()"
+
+build $builddir/app/versConfigService/obj/configuration/_main.c.o: CompileC Target_Legato_Debug/app/versConfigService/src/configuration/_main.c
+  cFlags = $cFlags -DLE_COMPONENT_NAME=configuration_exe -DLE_LOG_SESSION=configuration_exe_LogSession -DLE_LOG_LEVEL_FILTER_PTR=configuration_exe_LogLevelFilterPtr 
+
+build $builddir/app/versConfigService/obj/configuration/configuration: LinkCExe $builddir/app/versConfigService/obj/configuration/_main.c.o | Target_Legato_Debug/staging/read-only/lib/libComponent_Configuration.so /legato/build/ar7/framework/lib/liblegato.so /legato/build/$target/framework/lib/liblegato.so
+  ldFlags = -rdynamic -Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" -LTarget_Legato_Debug/staging/read-only/lib "-LTarget_Legato_Debug/staging/read-only/lib" -lComponent_Configuration "-L$$LEGATO_BUILD/framework/lib" -llegato -lpthread -lrt -ldl -lm $ldFlags
+
+build $builddir/app/versConfigService/staging/read-only/lib/libComponent_Configuration.so : BundleFile Target_Legato_Debug/staging/read-only/lib/libComponent_Configuration.so
+  modeFlags = u+rw+x,g+r+x,o+x+r-w
+
+build $builddir/app/versConfigService/staging/read-only/bin/configuration : BundleFile $builddir/app/versConfigService/obj/configuration/configuration
+  modeFlags = u+rw+x,g+r+x,o+x+r-w
+
+build $builddir/app/versConfigService/staging/info.properties : MakeAppInfoProperties | $builddir/app/versConfigService/staging/read-only/lib/libComponent_Configuration.so $builddir/app/versConfigService/staging/read-only/bin/configuration $builddir/app/versConfigService/staging/root.cfg
+  name = versConfigService
+  version = 1.0.0
+  workingDir = $builddir/app/versConfigService
+
+build Target_Legato_Debug/versConfigService.$target.update: PackApp $builddir/app/versConfigService/staging/info.properties
+  name = versConfigService
+  adefPath = /ds/versConfigService/versConfigService.adef
+  version = 1.0.0
+  workingDir = $builddir/app/versConfigService
+
+build Target_Legato_Debug/build.ninja: RegenNinjaScript | /ds/versConfigService/Configuration/Component.cdef /ds/versConfigService/Configuration/config.api
+

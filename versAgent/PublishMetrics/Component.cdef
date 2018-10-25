@@ -1,0 +1,16 @@
+sources:
+{
+	publishMetrics.c
+}
+cflags:
+{
+    -I $CURDIR/../
+}
+requires:
+{
+	api:
+	{
+		aws = PublishMetrics/vers_awsIot.api
+		config = config.api
+	}
+}

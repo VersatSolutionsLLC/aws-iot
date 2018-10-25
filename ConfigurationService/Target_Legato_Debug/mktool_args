@@ -1,0 +1,14 @@
+mkapp
+-t
+ar7
+-o
+Target_Legato_Debug
+-w
+Target_Legato_Debug
+-C
+-g
+-X
+-g
+-L
+-g
+versConfigService.adef

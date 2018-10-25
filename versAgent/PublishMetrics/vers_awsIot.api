@@ -13,10 +13,18 @@ FUNCTION int32 Subscribe
 	int32 topicLen IN,
 	int32 qosType IN
 );
-FUNCTION int32 UnSubscribe
+FUNCTION int32 Unsubscribe
 (
 	string topic[256] IN,
 	int32 topicLen IN
+);
+FUNCTION Hibernate
+(
+	
+);
+FUNCTION bool IsInHibernation
+(
+	
 );
 HANDLER SubscribeEventHandler
 (
@@ -26,5 +34,3 @@ EVENT SubscribeEvent
 (
     SubscribeEventHandler handler
 );
-FUNCTION Hibernate();
-FUNCTION bool IsInHibernation();

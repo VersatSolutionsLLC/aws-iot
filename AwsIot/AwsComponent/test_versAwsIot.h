@@ -15,6 +15,7 @@ void test_on_hibernate_subscribe_publish();
 void test_subscribe_on_hibernate();
 void test_unsubscribe_on_hibernate();
 void test_publish_on_hibernate();
+void test_publish_only();
 
 /**
  * @brief Debug level logging macro.

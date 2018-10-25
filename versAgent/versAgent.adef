@@ -1,0 +1,43 @@
+executables:
+{
+	cmEXE = ( CollectMetrics)
+	pmEXE = ( PublishMetrics )
+}
+
+processes:
+{
+	envVars:
+	{
+		LE_LOG_LEVEL = 	DEBUG
+	}
+
+	run:
+	{
+		( cmEXE )
+		( pmEXE )
+	}
+
+	maxCoreDumpFileBytes: 512K
+	maxFileBytes: 512K
+}
+
+bindings:
+{
+    cmEXE.CollectMetrics.le_mrc -> modemService.le_mrc
+    cmEXE.CollectMetrics.le_info -> modemService.le_info
+    cmEXE.CollectMetrics.le_sim -> modemService.le_sim
+    cmEXE.CollectMetrics.le_temp -> modemService.le_temp
+    
+    cmEXE.CollectMetrics.le_gnss -> positioningService.le_gnss
+    cmEXE.CollectMetrics.le_pos -> positioningService.le_pos
+    cmEXE.CollectMetrics.le_posCtrl -> positioningService.le_posCtrl
+    
+    cmEXE.CollectMetrics.config -> versConfigService.config
+    pmEXE.PublishMetrics.config -> versConfigService.config
+    pmEXE.PublishMetrics.aws -> versAwsIotService.aws
+    
+}
+version: 1.0.0
+maxFileSystemBytes: 512K
+sandboxed: true
+

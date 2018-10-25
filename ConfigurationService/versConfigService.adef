@@ -3,7 +3,6 @@ executables:
 	configuration = ( Configuration )
 }
 
-
 processes:
 {
 	envVars:
@@ -26,3 +25,4 @@ extern:
 version: 1.0.0
 maxFileSystemBytes: 512K
 sandboxed:false
+

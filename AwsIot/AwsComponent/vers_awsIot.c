@@ -271,6 +271,11 @@ bool _connect() {
 					== SUCCESS;
 			time(&eTime);
 		}
+
+		if ( difftime(eTime, sTime) > WAIT_FOR_MQTT_CONNECT_SEC ) {
+			LE_DEBUG("AWS connection time is exceeded the higest limit %d secs",WAIT_FOR_MQTT_CONNECT_SEC);
+		}
+
 	}
 	if (isConnected) {
 		LE_DEBUG("Connected successfully! ");
@@ -296,6 +301,8 @@ int32_t aws_Publish(const char* topic,	///< [IN]  The MQTT Topic name
 
 	LOCK();
 
+	LE_DEBUG("Publishing to topic[%s] a payload of size: %d[=%d]", topic, strlen(payload), payloadLen);
+
 	IoT_Publish_Message_Params paramsQOS1;
 	paramsQOS1.qos = qosType;
 	paramsQOS1.payload = (void*) payload;
@@ -311,6 +318,7 @@ int32_t aws_Publish(const char* topic,	///< [IN]  The MQTT Topic name
 					"DEV ERROR! _isInHibernation should be false - probably set to true outside a LOCK()/UNLOCK() scope!");
 			_isInHibernation = false;
 		}
+
 		break;
 	case NETWORK_DISCONNECTED_ERROR:
 	case MQTT_REQUEST_TIMEOUT_ERROR:
@@ -387,7 +395,9 @@ void aws_RemoveSubscribeEventHandler(aws_SubscribeEventHandlerRef_t handlerRef /
  * Does not exit in case of an MQTT failure, and keeps on checking as long as at least one
  * subscriber exists.
  */
-static void* _awsPoll(void* timeout	///< [IN]  Maximum timeout (ms) for AWS Yield
+static void* _awsPoll
+(
+		void* timeout	///< [IN]  Maximum timeout (ms) for AWS Yield
 		) {
 
 	IoT_Error_t rc = SUCCESS;
@@ -470,7 +480,9 @@ void aws_Hibernate() {
  * @return SUCCESS (0) if the subscribe succeeds, else an AWS IoT Error Type
  * defining the failure reason.
  */
-int aws_Subscribe(const char* sTopic,	///< [IN]  The MQTT Topic name
+int aws_Subscribe
+(
+		const char* sTopic,				///< [IN]  The MQTT Topic name
 		int32_t topicLen,				///< [IN]  Length of the MQTT Topic name
 		int32_t qosType					///< [IN]  MQTT QoS Type
 		) {

@@ -42,7 +42,7 @@ int config_OpenFile() {
 		break;
 	case LEGATO_FILE_SYSTEM:
 		LE_DEBUG(
-				"Trying to open file.\nFile name = %s\nFile access type = LINUX",
+				"Trying to open file.\nFile name = %s\nFile access type = LEGATO_FILE_SYSTEM",
 				CONFIG_FILE_NAME);
 		le_result_t resType = le_fs_Open(CONFIG_FILE_NAME, accType, &fileRef);
 		if (LE_OK == resType) {
@@ -168,7 +168,7 @@ COMPONENT_INIT {
 	cfMutex = le_mutex_CreateNonRecursive("configFileMutex");
 	int isOpen = config_OpenFile();
 	if (0 == isOpen) {
-		LE_FATAL("Unable to open configuration file %s", CONFIG_FILE_NAME);
+		LE_ERROR("Unable to open configuration file %s", CONFIG_FILE_NAME);
 	}
 }
 

@@ -38,7 +38,7 @@
 #else
 #define AWS_IOT_MQTT_RX_BUF_LEN 2048
 #endif
-#define AWS_IOT_MQTT_TX_BUF_LEN 512 ///< Any time a message is sent out through the MQTT layer. The message is copied into this buffer anytime a publish is done. This will also be used in the case of Thing Shadow
+#define AWS_IOT_MQTT_TX_BUF_LEN 1024 ///< Any time a message is sent out through the MQTT layer. The message is copied into this buffer anytime a publish is done. This will also be used in the case of Thing Shadow
 #define AWS_IOT_MQTT_NUM_SUBSCRIBE_HANDLERS 5 ///< Maximum number of topic filters the MQTT client can handle at any given time. This should be increased appropriately when using Thing Shadow
 
 // Shadow and Job common configs
